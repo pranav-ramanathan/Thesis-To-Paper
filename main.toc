@@ -1,0 +1,37 @@
+\contentsline {chapter}{\numberline {1}Introduction}{6}{chapter.8}%
+\contentsline {chapter}{\numberline {2}Methodology}{9}{chapter.10}%
+\contentsline {section}{\numberline {2.1}Problem Formulation}{9}{section.11}%
+\contentsline {section}{\numberline {2.2}CP-SAT Approach}{10}{section.18}%
+\contentsline {subsection}{\numberline {2.2.1}Decision Variables}{11}{subsection.19}%
+\contentsline {subsection}{\numberline {2.2.2}Core Constraints}{11}{subsection.24}%
+\contentsline {paragraph}{Placement constraint.}{11}{paragraph*.25}%
+\contentsline {paragraph}{Self-avoidance constraint.}{12}{paragraph*.27}%
+\contentsline {paragraph}{Adjacency constraint.}{12}{paragraph*.29}%
+\contentsline {paragraph}{Contact linking constraint.}{12}{paragraph*.32}%
+\contentsline {subsection}{\numberline {2.2.3}Symmetry Breaking}{12}{subsection.33}%
+\contentsline {subsection}{\numberline {2.2.4}Objective Function}{13}{subsection.36}%
+\contentsline {subsection}{\numberline {2.2.5}Solver Configuration}{13}{subsection.38}%
+\contentsline {section}{\numberline {2.3}LSTM-A Deep Q-Learning Approach}{13}{section.39}%
+\contentsline {subsection}{\numberline {2.3.1}Markov Decision Process Formulation}{14}{subsection.40}%
+\contentsline {subsection}{\numberline {2.3.2}Environment Implementation}{15}{subsection.45}%
+\contentsline {paragraph}{Bounded coordinate system.}{15}{paragraph*.46}%
+\contentsline {paragraph}{Symmetry breaking.}{15}{paragraph*.48}%
+\contentsline {paragraph}{Trap detection.}{15}{paragraph*.49}%
+\contentsline {paragraph}{Action masking.}{15}{paragraph*.50}%
+\contentsline {subsection}{\numberline {2.3.3}LSTM-A Network Architecture}{16}{subsection.52}%
+\contentsline {paragraph}{Input encoding.}{16}{paragraph*.53}%
+\contentsline {paragraph}{LSTM with multi-head attention.}{16}{paragraph*.54}%
+\contentsline {paragraph}{Dueling Q-value heads.}{16}{paragraph*.55}%
+\contentsline {subsection}{\numberline {2.3.4}Training Protocol}{17}{subsection.58}%
+\contentsline {paragraph}{Double DQN.}{17}{paragraph*.59}%
+\contentsline {paragraph}{Prioritized experience replay.}{17}{paragraph*.61}%
+\contentsline {paragraph}{Action masking with $\varepsilon $-greedy exploration.}{18}{paragraph*.64}%
+\contentsline {paragraph}{Hyperparameters and training details.}{18}{paragraph*.67}%
+\contentsline {chapter}{\numberline {3}Experiments and Results}{19}{chapter.72}%
+\contentsline {section}{\numberline {3.1}Experimental Setup}{19}{section.73}%
+\contentsline {section}{\numberline {3.2}Solution Quality}{19}{section.74}%
+\contentsline {section}{\numberline {3.3}Computational Efficiency}{21}{section.77}%
+\contentsline {chapter}{\numberline {4}Discussion}{24}{chapter.81}%
+\contentsline {section}{\numberline {4.1}Comparative Performance Analysis}{24}{section.82}%
+\contentsline {section}{\numberline {4.2}Algorithmic Trade-offs}{25}{section.83}%
+\contentsline {section}{\numberline {4.3}Limitations and Future Work}{25}{section.84}%
