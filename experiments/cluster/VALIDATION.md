@@ -71,3 +71,9 @@ updates, exploratory/evaluation probes, checkpoint disposal and the summed
 deadline reserves. **21 tests passed; five existing numerical tests skipped**.
 Python/Bash syntax passed; all 18 dissertation files remain unchanged. No local
 performance experiment or cluster follow-up was launched here.
+
+The submission summary now separates the one-hour pilot scheduler request from
+its ten-day queue allowance. Its CPU-hour ceiling is eight, replacing the
+overly broad 1,920-hour campaign formula. Tests check both CP and RL pilot
+manifests. Previously submitted frozen bundles retain their original metadata;
+their actual one-hour Slurm requests were already correct.

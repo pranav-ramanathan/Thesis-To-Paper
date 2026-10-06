@@ -71,6 +71,8 @@ class ResourceTests(unittest.TestCase):
                 self.assertEqual(manifest['pilot_arm'], arm)
                 self.assertEqual(manifest['tasks'], [dict(arm='pilot', seed=0, seq_id=f'{arm}_resources')])
                 self.assertEqual(manifest['run_seconds'], 3000)
+                self.assertEqual(manifest['allocation_time_limit_seconds'], 3600)
+                self.assertEqual(manifest['reserved_cpu_hours_ceiling'], 8)
                 self.assertEqual(verify(out), manifest)
 
     def test_pilot_orchestration_never_mixes_cp_and_rl_workloads(self):

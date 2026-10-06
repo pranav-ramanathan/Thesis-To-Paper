@@ -92,6 +92,7 @@ def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=Fal
                 tasks.insert(seed * (len(tasks) // 5), dict(arm='decisionboost', seed=seed, seq_id='fresh_corpus'))
         deadline_seconds, run_seconds = 864000, run_hours * 3600
     now = time.time()
+    allocation_time_limit_seconds = 3600 if mode=='pilot' else 864000
     try:
         revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=HERE,
                                            text=True, stderr=subprocess.DEVNULL).strip()
@@ -100,14 +101,17 @@ def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=Fal
     manifest = dict(schema_version=1, mode=mode, created_epoch=now,
                     deadline_epoch=now + deadline_seconds,
                     deadline_utc=datetime.fromtimestamp(now + deadline_seconds, timezone.utc).isoformat(),
-                    deadline_scope='Entire campaign from creation, includes queue time; no extension',
+                    deadline_scope=('Pilot queue allowance; each allocation requests one hour and computes up to 50 minutes'
+                                    if mode=='pilot' else 'Entire campaign from creation, includes queue time; no extension'),
                     run_seconds=run_seconds, concurrency=concurrency, threads=threads,
+                    allocation_time_limit_seconds=allocation_time_limit_seconds,
                     pilot_arm=pilot_arm if mode=='pilot' else None,
                     tasks=tasks, model_dir=model_dir, model_files=model_files, git_revision=revision,
                     python_executable=sys.executable,
                     bundle_sha256=hashes(out / 'bundle'),
                     maximum_concurrent_allocated_cpus=threads * min(concurrency, len(tasks)),
-                    reserved_cpu_hours_ceiling=threads * min(concurrency, len(tasks)) * deadline_seconds / 3600,
+                    reserved_cpu_hours_ceiling=threads * min(concurrency, len(tasks))
+                                              * min(deadline_seconds, allocation_time_limit_seconds) / 3600,
                     comparison='Primary common CPU domain and per-run elapsed budget; DecisionBoost is a separate call-budget study')
     save(out / 'campaign.json', manifest)
     (out/'campaign.sha256').write_text(file_hash(out/'campaign.json')+'\n')
@@ -128,4 +132,6 @@ if __name__ == '__main__':
     m = create(**vars(args))
     print(json.dumps(dict(directory=str(args.out.resolve()), tasks=len(m['tasks']),
                           deadline_utc=m['deadline_utc'], run_hours=m['run_seconds']/3600,
+                          scheduler_request_hours=m['allocation_time_limit_seconds']/3600,
+                          deadline_scope=m['deadline_scope'],
                           reserved_cpu_hours_ceiling=m['reserved_cpu_hours_ceiling']), indent=2))
