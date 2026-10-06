@@ -24,6 +24,57 @@ FOLD=[[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,2,0],[1,2,0],[1,3,0],[0,3,0]]
 
 
 class ProtocolTests(unittest.TestCase):
+    def test_seed0_feasibility_freezes_only_nine_reference_runs(self):
+        original=json.loads((HERE/'protocol.json').read_text())
+        with tempfile.TemporaryDirectory() as d:
+            out=Path(d)/'run'
+            m=create(out,mode='campaign',stage='seed0-feasibility',concurrency=9)
+            frozen=json.loads((out/'bundle/protocol.json').read_text())
+            expected={(arm,0,seq) for arm in ('cp_sat','rl','rl_cp_sat') for seq in ('3d4','3d6','3d8')}
+            self.assertEqual({(t['arm'],t['seed'],t['seq_id']) for t in m['tasks']},expected)
+            self.assertEqual(len(m['tasks']),9)
+            self.assertEqual(frozen['seeds'],[0])
+            self.assertEqual(frozen['configurations'],{s:original['configurations'][s] for s in ('3d4','3d6','3d8')})
+            for key in ('max_episodes','repair_every_episodes','repair_seconds','checkpoint_seconds'):
+                self.assertEqual(frozen[key],original[key])
+            self.assertEqual(m['run_seconds'],86400)
+            self.assertEqual(m['maximum_concurrent_allocated_cpus'],72)
+            self.assertEqual(m['deadline_epoch']-m['created_epoch'],864000)
+            self.assertEqual(verify(out),m)
+        self.assertEqual(json.loads((HERE/'protocol.json').read_text()),original)
+
+    def test_seed0_rejects_resource_pilot_and_optional_study_before_creating_output(self):
+        with tempfile.TemporaryDirectory() as d:
+            for kwargs in (dict(mode='pilot'),dict(mode='campaign',include_decisionboost=True)):
+                out=Path(d)/'invalid'
+                with self.assertRaises(ValueError):create(out,stage='seed0-feasibility',**kwargs)
+                self.assertFalse(out.exists())
+
+    def test_seed0_report_uses_selected_seed_count_and_validated_witness(self):
+        from analyse import analyse
+        with tempfile.TemporaryDirectory() as d:
+            out=Path(d)/'run'
+            create(out,mode='campaign',stage='seed0-feasibility')
+            protocol=json.loads((out/'bundle/protocol.json').read_text())
+            seq=protocol['configurations']['3d4']['sequence']
+            fold=[[i%2 if (i//2)%2==0 else 1-i%2,i//2,0] for i in range(len(seq))]
+            value=contacts(seq,fold,len(seq)//2)
+            task=out/'tasks/000_cp_sat_3d4_seed0';task.mkdir()
+            save(task/'launch.json',dict(total_elapsed_s=86400,status='finished'))
+            (task/'events.jsonl').write_text(json.dumps(dict(type='witness',seq=seq,positions=fold,contacts=value,elapsed_s=100))+'\n')
+            report=analyse(out)
+            self.assertEqual(len(report['primary']),9)
+            self.assertTrue(all(r['requested_seeds']==1 for r in report['primary']))
+            row=next(r for r in report['primary'] if r['seq_id']=='3d4' and r['arm']=='cp_sat')
+            self.assertEqual(row['mean_contacts'],value)
+            self.assertIsNone(row['sd_contacts'])
+            self.assertEqual(report['verification_errors'],[])
+            text=(out/'report.md').read_text()
+            self.assertIn('| 3d4 | cp_sat | 1/1 |',text)
+            self.assertIn('| 3d6 | rl | 0/1 |',text)
+            self.assertNotIn('/5 |',text)
+            self.assertIn('one seed per method/sequence',text)
+
     def test_unique_five_seed_matrix_and_deadline(self):
         with tempfile.TemporaryDirectory() as d:
             m=create(Path(d)/'run',mode='campaign')
@@ -84,6 +135,27 @@ class ProtocolTests(unittest.TestCase):
             self.assertIn('--constraint=verified_test_architecture',args)
             self.assertEqual(Path(args[-1]).resolve(),out.resolve())
             self.assertEqual((out/'job_id.txt').read_text().strip(),'12345')
+
+    def test_seed0_wrapper_submits_only_nine_jobs_and_enables_email(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);venv=root/'venv';(venv/'bin').mkdir(parents=True)
+            (venv/'bin/python').symlink_to(sys.executable)
+            fake=root/'commands';fake.mkdir();capture=root/'arguments.txt'
+            sbatch=fake/'sbatch';sbatch.write_text('#!/bin/bash\nprintf "%s\\n" "$@" > "$HP_CAPTURE_FILE"\nprintf "12345\\n"\n');sbatch.chmod(0o755)
+            env=dict(os.environ,HP_VENV_PATH=str(venv),HP_NODE_CONSTRAINT='ehc',
+                     HP_CAPTURE_FILE=str(capture),PATH=str(fake)+os.pathsep+os.environ['PATH'])
+            out=root/'seed0 with spaces'
+            r=subprocess.run(['bash',str(HERE/'seed0-test.sh'),str(out)],env=env,capture_output=True,text=True)
+            self.assertEqual(r.returncode,0,r.stderr)
+            args=capture.read_text().splitlines()
+            for expected in ('--array=0-8%9','--cpus-per-task=8','--constraint=ehc','--mail-type=END,FAIL'):
+                self.assertIn(expected,args)
+            self.assertEqual(verify(out)['run_seconds'],86400)
+            self.assertEqual(verify(out)['stage'],'seed0-feasibility')
+            self.assertEqual((out/'job_id.txt').read_text().strip(),'12345')
+            r=subprocess.run(['bash',str(HERE/'seed0-test.sh'),str(root/'invalid'),'--run-hours'],env=env,capture_output=True,text=True)
+            self.assertNotEqual(r.returncode,0)
+            self.assertFalse((root/'invalid').exists())
 
 
 class GeometryTests(unittest.TestCase):

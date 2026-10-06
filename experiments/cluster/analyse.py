@@ -102,7 +102,10 @@ def analyse(directory):
     for r in summary:
         val='—' if r['mean_contacts'] is None else f"{r['mean_contacts']:.2f}"
         sd='—' if r['sd_contacts'] is None else f"{r['sd_contacts']:.2f}"
-        lines.append(f"| {r['seq_id']} | {r['arm']} | {r['seeds_with_valid_budget_result']}/5 | {val} | {sd} |")
+        lines.append(f"| {r['seq_id']} | {r['arm']} | {r['seeds_with_valid_budget_result']}/{r['requested_seeds']} | {val} | {sd} |")
+    if m.get('stage') == 'seed0-feasibility':
+        lines.extend(['', 'Seed-0 feasibility only: one seed per method/sequence. These outcomes assess learning and sustained resource use; they do not establish a multi-seed method ranking.',
+                      'The rl_cp_sat arm uses fixed repairs, not the learned DecisionBoost controller. No full campaign follows automatically.'])
     scientific_secondary=[r for r in secondary if not r['engineering_only']]
     if scientific_secondary:
         lines.extend(['','## Separate DecisionBoost replication','',f'{len(scientific_secondary)} completed fresh sequence/seed cases.',

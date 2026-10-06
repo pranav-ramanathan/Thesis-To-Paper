@@ -46,7 +46,11 @@ def verify(campaign):
 
 
 def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=False,
-           model_dir=None, threads=8, pilot_arm='rl'):
+           model_dir=None, threads=8, pilot_arm='rl', stage='full'):
+    if stage not in ('full', 'seed0-feasibility'):
+        raise ValueError('Stage must be full or seed0-feasibility')
+    if stage == 'seed0-feasibility' and (mode != 'campaign' or include_decisionboost):
+        raise ValueError('Seed-0 feasibility is a primary campaign only; no optional DecisionBoost jobs')
     if not 0 < run_hours <= 239.75:
         raise ValueError('run-hours must be > 0 and <= 239.75 (save/termination reserve)')
     if not 1 <= threads <= 96 or not 1 <= concurrency <= 125:
@@ -77,6 +81,10 @@ def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=Fal
     (out / 'tasks').mkdir()
     protocol = json.loads((out / 'bundle/protocol.json').read_text())
     protocol['threads'] = threads
+    if stage == 'seed0-feasibility':
+        protocol['seeds'] = [0]
+        protocol['configurations'] = {seq_id: protocol['configurations'][seq_id]
+                                      for seq_id in ('3d4', '3d6', '3d8')}
     save(out / 'bundle/protocol.json', protocol)
     if mode == 'pilot':
         tasks = [dict(arm='pilot', seed=0, seq_id=f'{pilot_arm}_resources')]
@@ -98,7 +106,7 @@ def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=Fal
                                            text=True, stderr=subprocess.DEVNULL).strip()
     except (OSError, subprocess.CalledProcessError):
         revision = None
-    manifest = dict(schema_version=1, mode=mode, created_epoch=now,
+    manifest = dict(schema_version=1, mode=mode, stage=stage, created_epoch=now,
                     deadline_epoch=now + deadline_seconds,
                     deadline_utc=datetime.fromtimestamp(now + deadline_seconds, timezone.utc).isoformat(),
                     deadline_scope=('Pilot queue allowance; each allocation requests one hour and computes up to 50 minutes'
@@ -126,6 +134,7 @@ if __name__ == '__main__':
     p.add_argument('--concurrency', type=int, default=24)
     p.add_argument('--threads', type=int, default=8)
     p.add_argument('--pilot-arm', choices=['rl', 'cp_sat'], default='rl')
+    p.add_argument('--stage', choices=['full', 'seed0-feasibility'], default='full')
     p.add_argument('--include-decisionboost', action='store_true')
     p.add_argument('--model-dir', type=Path)
     args = p.parse_args()

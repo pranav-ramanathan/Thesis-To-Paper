@@ -41,6 +41,55 @@ before saving overhead. This is not a prediction of actual usage or queue time.
 Changing concurrency changes completion feasibility. Late or interrupted runs
 are explicitly partial, not silently treated as full-budget outcomes.
 
+## Next step: 24-hour seed-0 feasibility pass
+
+After the resource pilots, run **nine fresh jobs**, rather than the full
+120-job campaign: 3d4, 3d6 and the explicitly proposed 3d8 configuration, each
+with seed 0 and CP-SAT, RL and fixed RL+CP-SAT. This is a learning/search and
+sustained-memory check. It preserves the original configurations, epsilon
+schedule, 200,000-episode limit and fixed repair policy. It is not the learned
+DecisionBoost controller study.
+
+From the existing Apocrita clone, after updating the repository:
+
+```bash
+git pull --ff-only
+HP_NODE_CONSTRAINT=ehc HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 \
+  bash experiments/cluster/seed0-test.sh "$PWD/.cluster-runs/seed0_24h_01"
+```
+
+The `ehc` feature was verified in the supplied `sinfo` output. The command
+submits an array with at most nine simultaneous jobs, **eight CPUs and 32 GiB
+per job**, using the existing environment. No dependency reinstall is needed.
+Each run computes for up to 24 hours, then has up to three minutes to save.
+The Slurm ceiling remains ten days; the frozen absolute deadline includes queue
+time and is ten days from preparation. All nine jobs together use up to about
+**1,728 allocated CPU-hours plus saving overhead** if all reach the compute
+cutoff. Nine available allocations allow one approximately 24-hour wave;
+scheduling can delay or stagger them. CP-SAT can finish early with a cube proof.
+Slurm sends END/FAIL notifications to the registered address for the array;
+per-task notification timing follows site Slurm configuration.
+
+Use a fresh output directory. The wrapper freezes only these nine tasks and
+enables completion/failure mail. It does not submit any follow-up experiment.
+To inspect the submission command without submitting, append `--dry-run` and
+use a separate fresh directory, then use another directory for the real run.
+
+Monitor and collect:
+
+```bash
+squeue -u "$USER"
+bash -c 'source experiments/cluster/environment.sh; "$HP_VENV_PATH/bin/python" experiments/cluster/analyse.py "$PWD/.cluster-runs/seed0_24h_01"'
+cat .cluster-runs/seed0_24h_01/report.md
+sacct -j "$(cat .cluster-runs/seed0_24h_01/job_id.txt)" \
+  --format=JobID,State,Elapsed,AllocCPUS,TotalCPU,MaxRSS,NodeList
+```
+
+Review validated best-fold trajectories, hourly greedy evaluations, completed
+episodes/epsilon, checkpoints and peak memory. One seed cannot establish a
+multi-seed method ranking. Use these results to choose the later five-seed
+budget; no full campaign or deadline extension follows automatically.
+
 ## Methods and scientific scope
 
 - `cp_sat`: one continuous full-model search in the declared cube, with eight
