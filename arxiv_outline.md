@@ -44,7 +44,7 @@ strings × three methods gives **120 primary runs**. Exact benchmark lengths are
 20, 24, 25, 36, 46, 48, 50 and 58, not the earlier generated length-eight corpus.
 The saved protocol lacks a 3d8 architecture; its proposed row stays labelled.
 
-Run a disposable one-hour CPU pilot first. Apocrita's one-hour/ten-day advice is
+Run separate disposable one-hour CP-SAT and RL resource pilots first. Apocrita's one-hour/ten-day advice is
 about scheduler requests, not the scientific budget. Request **ten days** for
 campaign jobs and apply a separate configurable cutoff, provisionally **24 hours
 per primary run**. Inspect the CPU pilot before selecting that budget; freeze

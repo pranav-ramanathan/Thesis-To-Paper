@@ -46,13 +46,15 @@ def verify(campaign):
 
 
 def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=False,
-           model_dir=None, threads=8):
+           model_dir=None, threads=8, pilot_arm='rl'):
     if not 0 < run_hours <= 239.75:
         raise ValueError('run-hours must be > 0 and <= 239.75 (save/termination reserve)')
     if not 1 <= threads <= 96 or not 1 <= concurrency <= 125:
         raise ValueError('Invalid CPU count or concurrency')
     if mode == 'pilot' and threads != 8:
         raise ValueError('The pilot screens 1, 2, 4, 8 threads; allocate eight CPUs')
+    if pilot_arm not in ('rl', 'cp_sat'):
+        raise ValueError('Pilot arm must be rl or cp_sat')
     if include_decisionboost and not model_dir:
         raise ValueError('DecisionBoost requires --model-dir from prepare-model.sh')
     model_files=None
@@ -77,7 +79,7 @@ def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=Fal
     protocol['threads'] = threads
     save(out / 'bundle/protocol.json', protocol)
     if mode == 'pilot':
-        tasks = [dict(arm='pilot', seed=0, seq_id='representatives')]
+        tasks = [dict(arm='pilot', seed=0, seq_id=f'{pilot_arm}_resources')]
         deadline_seconds, run_seconds = 864000, 3000
     else:
         # Interleave methods/seeds/lengths so a partial campaign has broad coverage.
@@ -100,6 +102,7 @@ def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=Fal
                     deadline_utc=datetime.fromtimestamp(now + deadline_seconds, timezone.utc).isoformat(),
                     deadline_scope='Entire campaign from creation, includes queue time; no extension',
                     run_seconds=run_seconds, concurrency=concurrency, threads=threads,
+                    pilot_arm=pilot_arm if mode=='pilot' else None,
                     tasks=tasks, model_dir=model_dir, model_files=model_files, git_revision=revision,
                     python_executable=sys.executable,
                     bundle_sha256=hashes(out / 'bundle'),
@@ -118,6 +121,7 @@ if __name__ == '__main__':
     p.add_argument('--run-hours', type=float, default=24)
     p.add_argument('--concurrency', type=int, default=24)
     p.add_argument('--threads', type=int, default=8)
+    p.add_argument('--pilot-arm', choices=['rl', 'cp_sat'], default='rl')
     p.add_argument('--include-decisionboost', action='store_true')
     p.add_argument('--model-dir', type=Path)
     args = p.parse_args()

@@ -36,3 +36,16 @@ cluster measurements, learning-convergence evidence or a completed seed campaign
 No real Slurm job was submitted. Scheduler availability, account permissions,
 the EHC node selection, quotas and target-cluster performance remain to be
 checked on Apocrita. The one-hour pilot is the next actual cluster step.
+
+## Separate resource pilots — subsequent script revision
+
+The CP-SAT and RL resource tests now submit independent one-hour jobs with
+separate frozen manifests and reports. No local performance benchmark or real
+cluster job was run for this revision. Standard-library checks completed:
+**17 tests passed; five existing numerical tests skipped** in the system Python
+environment. New checks cover separation of the two workload plans, both Bash
+submission wrappers through fake Slurm, reporting without numerical imports,
+RAM headroom and core selection, incomplete/failed measurement rejection, and
+distinct resident replay arrays. Bash/Python syntax checks passed. All 18
+dissertation checksums remain unchanged. Target-cluster execution remains the
+purpose of these scripts, rather than a claimed result.

@@ -2,7 +2,7 @@
 # Freeze source/configurations before submitting. No hidden or automatic follow-up jobs.
 set -euo pipefail
 HP_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-[[ $# -ge 2 ]] || { echo 'Usage: submit.sh pilot|campaign OUT [--run-hours H] [--concurrency N] [--threads N] [--include-decisionboost --model-dir DIR] [--dry-run]' >&2; exit 2; }
+[[ $# -ge 2 ]] || { echo 'Usage: submit.sh pilot|campaign OUT [--pilot-arm cp_sat|rl] [--run-hours H] [--concurrency N] [--threads N] [--include-decisionboost --model-dir DIR] [--dry-run]' >&2; exit 2; }
 HP_MODE=$1; HP_OUT=$2; shift 2
 source "$HP_SCRIPT_DIR/environment.sh"
 HP_ARGS=(); HP_DRY_RUN=0
@@ -23,11 +23,16 @@ HP_VALUES=$("$HP_VENV_PATH/bin/python" - "$HP_OUT" <<'PY'
 import json,sys
 from pathlib import Path
 m=json.loads((Path(sys.argv[1])/'campaign.json').read_text())
-print(len(m['tasks']),m['concurrency'],m['threads'])
+print(len(m['tasks']),m['concurrency'],m['threads'],m.get('pilot_arm') or '-')
 PY
 )
-read -r HP_COUNT HP_CONCURRENCY HP_THREADS <<< "$HP_VALUES"
+read -r HP_COUNT HP_CONCURRENCY HP_THREADS HP_PILOT_ARM <<< "$HP_VALUES"
 HP_OPTIONS=(--parsable --chdir="$HP_OUT" --output="$HP_OUT/logs/%A_%a.out" --error="$HP_OUT/logs/%A_%a.err" --cpus-per-task="$HP_THREADS")
+if [[ "$HP_MODE" == pilot && -n "${HP_PILOT_PARTITION:-}" ]]; then
+    [[ "$HP_PILOT_PARTITION" == compute || "$HP_PILOT_PARTITION" == computeshort ]] || { echo 'HP_PILOT_PARTITION must be compute or computeshort.' >&2; exit 2; }
+    HP_OPTIONS+=(--partition="$HP_PILOT_PARTITION")
+fi
+if [[ "$HP_MODE" == pilot ]]; then HP_OPTIONS+=(--job-name="hp-$HP_PILOT_ARM-resources"); fi
 # A hardware restriction is compulsory for the primary comparison. Feature names
 # must come from sinfo; the docs do not publish an EHC Slurm feature string.
 if [[ -n "${HP_NODE_CONSTRAINT:-}" ]]; then

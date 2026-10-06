@@ -218,42 +218,8 @@ def rl_run(args, protocol, config, recorder):
 
 
 def pilot_run(args, protocol, recorder):
-    import torch
-    rows = []
-    for seq_id in ('3d4','3d6','3d8'):
-        config = protocol['configurations'][seq_id]
-        for threads in (1,2,4,8):
-            if STOP or args.end_epoch-time.time() < 60:
-                return dict(status='partial', measurements=rows)
-            torch.set_num_threads(threads); seed_all(80610)
-            agent = make_agent(config)
-            # Populate full configured replay with fixed valid transition references;
-            # disposable engineering state, excluded from scientific outcomes.
-            samples = []; state = agent.env.reset()
-            while len(samples)<128:
-                valid = np_valid(agent.env)
-                if not valid:
-                    state = agent.env.reset(); continue
-                action = random.choice(valid)
-                new_state, reward, done, _ = agent.env.step(action)
-                samples.append((state,action,reward,new_state,done)); state=new_state
-                if done: state=agent.env.reset()
-            agent.memory.memory = [samples[i%len(samples)] for i in range(config['memory_size'])]
-            agent.memory.priorities[:] = 1
-            for _ in range(2): agent.update()
-            values=[]
-            for _ in range(5):
-                started=time.monotonic(); agent.update(); values.append(time.monotonic()-started)
-            row=dict(seq_id=seq_id, threads=threads, median_update_s=statistics.median(values), repeats_s=values)
-            recorder.emit(dict(type='pilot_timing', **row)); rows.append(row)
-            del agent
-    torch.set_num_threads(args.threads)
-    from hp_solver import solve
-    for seq_id in ('3d4','3d6','3d8'):
-        if STOP or time.time() >= args.end_epoch: break
-        solve(protocol['configurations'][seq_id]['sequence'], seconds=1, threads=args.threads,
-              seed=0, emit=lambda row:recorder.emit(dict(row, engineering_only=True)), stopped=lambda:STOP)
-    return dict(status='complete', measurements=rows, scientific_results=False)
+    from resource_pilot import run
+    return run(args, protocol, recorder, stopped=lambda: STOP)
 
 
 def np_valid(env):

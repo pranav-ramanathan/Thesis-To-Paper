@@ -15,7 +15,7 @@ The supplied defaults are:
 | Setting | Pilot | Campaign |
 |---|---|---|
 | Slurm request | 1 hour | 10 days per allocation |
-| Application compute cutoff | 50 minutes | **24 hours per primary run**, configurable |
+| Application compute cutoff | 50 minutes; individual cells also bounded | **24 hours per primary run**, configurable |
 | Absolute campaign deadline | 10 days from preparation (queue allowance) | **10 days from preparation**, including queue time |
 | CPUs / memory per array element | 8 / 32 GB | 8 / 32 GB |
 | Concurrent array elements | 1 | 24, configurable |
@@ -121,9 +121,8 @@ unrestricted submission; they do not invent an `ehc` feature name.
 [Slurm constraints](https://docs.hpc.qmul.ac.uk/using/submittingjobs/constraints/).
 
 Check that your selected nodes are also available in `computeshort` for the pilot.
-If not, run the pilot with a one-hour request on `compute` by changing the
-partition directive in your local pilot template before preparation; keep the
-CPU architecture the same. The source snapshot records that change.
+If not, set `export HP_PILOT_PARTITION=compute` before submitting: the pilot still
+requests **one hour**, on the same CPU architecture.
 
 ## Pilot, then campaign
 
@@ -132,10 +131,15 @@ CPU architecture the same. The source snapshot records that change.
 export HP_RUN_ROOT="$PWD/.cluster-runs"
 mkdir -p "$HP_RUN_ROOT"
 
-bash experiments/cluster/submit.sh pilot "$HP_RUN_ROOT/pilot_01"
-# After it finishes:
-.venv-cluster/bin/python experiments/cluster/analyse.py "$HP_RUN_ROOT/pilot_01"
-# Timings: tasks/000_pilot_representatives_seed0/result.json and events.jsonl.
+bash experiments/cluster/cp-resource-test.sh "$HP_RUN_ROOT/pilot_cp_01"
+bash experiments/cluster/rl-resource-test.sh "$HP_RUN_ROOT/pilot_rl_01"
+# After each separate job finishes:
+bash experiments/cluster/resource-report.sh "$HP_RUN_ROOT/pilot_cp_01"
+bash experiments/cluster/resource-report.sh "$HP_RUN_ROOT/pilot_rl_01"
+# Read tasks/000_pilot_cp_sat_resources_seed0/resource_report.md in the CP directory,
+# and tasks/000_pilot_rl_resources_seed0/resource_report.md in the RL directory.
+# Detailed timings: resource_report.json and cells/*/measurement.json.
+# Scheduler usage: accounting.txt (including job-step MaxRSS and TotalCPU).
 
 # Preview a concrete frozen campaign without submitting it:
 bash experiments/cluster/submit.sh campaign "$HP_RUN_ROOT/preview_01" --run-hours 24 --concurrency 24 --dry-run
@@ -144,12 +148,54 @@ bash experiments/cluster/submit.sh campaign "$HP_RUN_ROOT/preview_01" --run-hour
 bash experiments/cluster/submit.sh campaign "$HP_RUN_ROOT/campaign_01" --run-hours 24 --concurrency 24 --threads 8
 ```
 
-The pilot measures filled-buffer reference updates on 3d4/3d6/3d8, two warmups and
-five repetitions at 1/2/4/8 threads, plus short CP checks. It uses disposable
-states, excluded from scientific results. It does not establish RL convergence.
-Choose the common allocated CPU count after inspecting this screen; the default
-eight is provisional. The primary bundle records its exact executed sources,
-protocol, seeds and deadline. Every launch checks the frozen source hashes.
+These are **two independent jobs**, one CP-SAT and one RL, with separate frozen
+manifests, logs, measurements and reports. **Each requests eight CPUs, 32 GiB
+and one hour**. Each screens 1/2/4/8 threads sequentially inside its allocation:
+at most eight allocated CPU-hours per job, sixteen for both. Each stops
+computation after 50 minutes, leaving saving/termination time. No campaign is
+submitted afterwards. Preview either submission with
+`cp-resource-test.sh NEW_DIRECTORY --dry-run` or
+`rl-resource-test.sh NEW_DIRECTORY --dry-run`; use fresh directories for actual
+submissions. You can also use `resource-test.sh cp_sat|rl NEW_DIRECTORY`.
+
+Each measurement uses a separate child process for meaningful peak resident
+memory. The **RL job**, on **3d4/3d6/3d8**, populates configured replay with distinct FP32
+arrays (repeated valid transition values), warms up twice, and targets five
+repetitions of updates and complete episode operations. It measures exploratory
+and greedy action selection, environment stepping, insertion, updates, independent
+fold checking, trace writing, evaluation and a full optimizer/replay/RNG checkpoint.
+Synthetic buffer population time is reported separately; it does not estimate
+how long genuine experience takes to accumulate. Checkpoint files are removed
+after their sizes and write times are recorded, keeping scratch use bounded.
+
+The **CP-SAT job** runs five fresh full searches (15 seconds each) and
+fixed-window repairs (five seconds each) on each representative at each worker
+count. Both jobs check the remaining five exact strings: RL uses their actual
+architecture, batch and replay sizes; CP checks full search and repair once.
+Each RL representative cell is capped at 175 seconds, CP representative cell at
+125 seconds, RL compatibility cell at 40 seconds and other CP cell at 30 seconds.
+Slow/native calls are terminated and saved as partial, with logs and sampled
+peak RSS; missing repetitions do not become successful timings.
+
+The RL report proposes the **fewest cores within 10% of the fastest
+aggregate representative RL throughput**, RAM rounded up with 50% headroom,
+checkpoint sizes, CPU use, descriptive timing ranges, extrapolated episodes/hour
+and 200,000-episode durations for the three representatives. It also shows the
+CPU-hour and elapsed-wave costs of several common campaign budgets. The separate
+CP report records worker counts, witness return rates, search/repair duration,
+CPU use and memory. Eight CP workers remains a tested provisional setting;
+these short calls cannot choose the best long-run worker count. Other RL rows
+are compatibility checks, not reliable runtime estimates. Short CP tests do not
+establish solver scaling or a long-run memory upper bound. The optional
+pretrained encoder/controller study needs a separate memory check.
+
+Inspect both reports, timeouts, all eight configuration checks and Slurm accounting
+before choosing final resource requests and a common allocation for the paper
+comparison. Each report flags incomplete coverage; it does not
+automatically freeze a campaign budget. These disposable engineering states
+cannot establish learning convergence or a fair method ranking. The primary
+bundle records its exact executed sources, protocol, seeds and deadline. Every
+launch checks the frozen source hashes.
 
 ## Optional transformer + learned controller + CP-SAT replication
 
