@@ -1,0 +1,6 @@
+{
+  "reference_source": "outputs/rl_profile_20261004/snapshot/corrected_reference.py",
+  "reference_sha256": "6babc08e284fd3b2759fa7195c4a6c0801940e0f0e7e33a4f5c934448e1fef97",
+  "upstream_context": "Liu and Iba, arXiv:2504.15634; project-local Attn_DQN_3d_hp.py snapshot; not the Espitia/Pang baseline",
+  "extraction": "Five reference classes. Gym inheritance/space metadata and rendering/close methods removed. Action count remains five. Network, replay, environment transitions/masks and update code retained. New runner restores training mode after evaluation; no benchmark candidate optimizations applied."
+}

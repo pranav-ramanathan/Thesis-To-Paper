@@ -38,7 +38,7 @@
 \newcommand{\Cov}{\mathrm{Cov}}
 \newcommand{\Var}{\mathrm{Var}}
 
-\title{The HP Protein-Folding Problem: Modern Constraint Programming and Reinforcement Learning approaches}
+\title{DecisionBoost for HP Protein Folding: Solver-Guided Decisions and CPU Comparisons}
 
 \author{
     \href{https://orcid.org/0009-0000-0270-7112}{\includegraphics[scale=0.06]{orcid.pdf}\hspace{1mm}Pranav Ramanathan} \\
@@ -54,7 +54,7 @@
 
 %%% Add PDF metadata to help others organize their library
 \hypersetup{
-    pdftitle={The HP Protein-Folding Problem: Comparing Constraint Programming and Reinforcement Learning},
+    pdftitle={DecisionBoost for HP Protein Folding: Solver-Guided Decisions and CPU Comparisons},
     pdfsubject={cs.AI,q-bio.BM},
     pdfauthor={Pranav Ramanathan, Thomas Prellberg},
     pdfkeywords={HP model, protein folding, constraint programming, CP-SAT, reinforcement learning, deep Q-learning, lattice models}
@@ -65,42 +65,30 @@
 \maketitle
 
 \begin{abstract}
-
-This paper presents a modern approach to constraint programming for the HP protein folding problem using Google OR-Tools CP-SAT, and compares it with Reinforcement Learning (RL). The HP model is designed to model a protein as a sequence of H (hydrophobic) and P (polar) amino acids on a simple cubic lattice with the interactions being chosen to mimic an aqueus solvent. Minimising its energy is a classic NP-complete problem in computational physics and combinatorial optimization, that has been studied extensively. CP-SAT is an open-source constraint programming solver that systematically explores the solution space through constraint satisfaction, dynamically augmenting itself with learned clauses. RL folds proteins by interacting with the environment and optimizing a policy through trial-and-error. On the shorter benchmark sequences tested, CP-SAT matches the best-known energy levels and provides certificates of optimality where it terminates with \texttt{OPTIMAL} status; on the longer sequences both methods remain below the best-known energies under the tested budgets.
-
-% The Deep Q-Learning approach, including the Q-network architecture, experience replay, and reward structure for maximizing H-H contacts, is also discussed.
-
-% This paper discusses the main components of the CP-SAT approach, such as constraint formulation, contact maximization, and symmetry breaking, and explains how it is used to solve the HP protein-folding problem. 
+We investigate cooperation between learned decisions and constraint optimisation for protein folding in the three-dimensional hydrophobic--polar lattice model. DecisionBoost combines a transformer fold constructor, a learned repair-region controller and bounded CP-SAT search; verified solver improvements supply feedback for learning. A completed local pilot motivates further evaluation but does not establish superiority over reinforcement learning or specialised HP solvers. This revised working draft specifies two distinct experiments: a CPU comparison of CP-SAT, an attention-based DQN and a fixed RL--CP-SAT hybrid on eight benchmark sequences, and a fresh-sequence replication of the learned DecisionBoost repair policy. The CPU campaign uses five seeds, a common declared lattice cube and a configurable elapsed budget, provisionally 24 hours per run. Jobs request Apocrita's ten-day scheduler ceiling while application guards stop computation earlier and enforce an absolute ten-day campaign deadline. Historical Apple MPS results, published reference values and new CPU measurements are kept separate. Cluster results remain pending; the paper's conclusions will follow the completed, independently checked trajectories rather than the available allocation.
 \end{abstract}
 
-\keywords{HP model \and protein folding \and constraint programming \and CP-SAT \and reinforcement learning \and lattice models}
+\keywords{HP model \and CP-SAT \and reinforcement learning \and decision models \and hybrid optimisation}
+
+\paragraph{Working-draft status.}
+This manuscript has been restructured around a predeclared CPU campaign and a separate DecisionBoost replication. The cluster campaign has not been executed. The earlier laptop manuscript is preserved verbatim in \texttt{archive/paper\_laptop\_draft\_20261006.tex}; the dissertation is not part of this revision.
 
 \section{Introduction}
-
-% Proteins are biological macromolecules that fold into three-dimensional structures, which determine their unique functions. These functions range from catalysing biochemical reactions to defending against pathogens. Because a protein's activity is strongly shaped by its conformation, characterising folding behaviour is often essential for understanding how proteins interact with other molecules. In medicine, this can inform drug discovery by supporting the design of compounds intended to stabilise or otherwise modulate specific protein structures.
-
-% This brings us to a central challenge in molecular biology: predicting a protein's three-dimensional conformation from its amino acid sequence. That task matters for drug design, disease research, and protein engineering. Levinthal's Paradox, introduced by Cyrus Levinthal in 1969~\cite{Levinthal1969}, is often cited to show why an exhaustive search over all possible conformations is not a realistic explanation for how proteins fold. The key observation is that, even under conservative assumptions, the conformational search space becomes astronomically large.
-
-% Haemoglobin provides a useful illustration. The oxygen-carrying protein in red blood cells has a beta subunit containing 146 amino acids~\cite{NCBI_Hemoglobin}, and each position in the chain is drawn from 20 standard amino acid types~\cite{NCBI_AminoAcids}. What makes folding difficult is how quickly the space of plausible conformations expands as the chain grows. If each rotatable bond is assumed to have $k$ stable conformations and $n$ is the number of amino acids, a rough upper-bound count gives on the order of $k^{n-1}$ possible configurations. For a beta subunit that gives 145 rotatable bonds, taking $k$ as roughly 3 yields $3^{145}$, or about $10^{69}$ configurations. Even at an unrealistically fast sampling rate of one configuration per picosecond, enumerating the full set would take on the order of $10^{49}$ years. Yet haemoglobin folds spontaneously on millisecond-to-second timescales~\cite{Eaton1996}. The gap between these numbers is the intuition behind Levinthal's Paradox, and it is one reason folding is typically approached through models and algorithms that exploit structure rather than brute-force enumeration.
-% design sequences
-% other methods
-
 Dill introduced the Hydrophobic-Polar (HP) lattice model in 1985~\cite{Dill1985}. This model collapses the twenty amino acid types into two classes: hydrophobic residues (H), which tend to avoid water, and polar residues (P), which interact more favourably with it. A sequence is then embedded as a self-avoiding walk on a lattice, with each residue occupying a distinct site and successive residues constrained to lie on adjacent lattice points~\cite{Lau1989}. Within this discrete setting, the objective is driven by hydrophobic contacts. In the simpler version of the model, the energy is defined by the number of non-consecutive H-H contacts, i.e., pairs of hydrophobic residues that are neighbours on the lattice but not adjacent along the chain. In effect, the optimisation target is to find an embedding that promotes hydrophobic clustering while respecting the self-avoidance and adjacency constraints.
 
 Even under this simplified lattice formulation, HP folding remains computationally demanding. \textit{Crescenzi et al.}\ proved in 1998 that the optimisation problem is NP-complete~\cite{Crescenzi1998}, so one should not expect a method that scales efficiently across all instances as the sequence length increases. The practical consequences show up fairly quickly: by the time sequences are in the 30 to 50 residue range, the set of valid self-avoiding conformations is already large enough that exhaustive enumeration stops being a useful point of comparison. That is part of the reason the HP model is used so often in combinatorial optimisation research: it is clean to specify, hard to solve, and easy to evaluate consistently across algorithms.
 
 Given that hardness, much of the earlier computational literature relied on heuristics rather than exact optimisation. Simulated annealing became a common choice from the 1990s onward because it provides a straightforward mechanism for escaping local minima by occasionally accepting unfavourable moves early in the search~\cite{UngerMoult1993}. Genetic algorithms offered a different style of exploration, maintaining a population of candidate folds and gradually improving it through recombination and mutation operators~\cite{Krasnogor2002Multimeme}. Tabu search was also explored, discouraging cycling by remembering recent states. Ant colony optimisation took yet another approach, biasing construction using information carried over from successful searches~\cite{LeshPullMoves2003, StützleACO2005}.
 
-Constraint programming (CP) offers an alternative to heuristic search for HP folding. Chain connectivity, self-avoidance, and contact formation can all be encoded directly as folding constraints and then pruned through propagation~\cite{Barták2003}. Earlier CP tools, such as CPSP-tools, successfully tackled HP folding using specialised H-core databases and constraint satisfaction techniques~\cite{CPSP2009}. Google OR-Tools CP-SAT extends this approach by combining it with on-the-fly SAT-style clause learning and linear programming relaxation~\cite{Perron2023}. This can provide bounds on solution quality and, in favourable cases, certificates of optimality~\cite{GoogleORTools}. Large Neighbourhood Search is also supported, allowing solutions to be improved iteratively~\cite{Shaw1998}. Earlier domain-specific tools such as CPSP-tools~\cite{CPSP2009} solve HP folding by enumerating a precomputed database of optimal H-cores (connected lattice subgraphs of hydrophobic residues), then asking a constraint solver only whether the remaining polar residues can be threaded around each candidate core; this offline precomputation cannot be reused across lattice types or model variants. Our CP-SAT formulation instead encodes the full folding problem directly, trading some HP-specific power for portability, reproducibility, and direct comparability against a learning-based baseline on the same benchmark family.
+Constraint programming (CP) offers an alternative to heuristic search for HP folding. Chain connectivity, self-avoidance, and contact formation can all be encoded directly as folding constraints and then pruned through propagation~\cite{Barták2003}. Earlier CP tools, such as CPSP-tools, successfully tackled HP folding using specialised H-core databases and constraint satisfaction techniques~\cite{CPSP2009}. Google OR-Tools CP-SAT extends this approach by combining it with on-the-fly SAT-style clause learning and linear programming relaxation~\cite{Perron2023}. This can provide bounds on solution quality and, in favourable cases, certificates of optimality~\cite{GoogleORTools}. Large Neighbourhood Search is also supported, allowing solutions to be improved iteratively~\cite{Shaw1998}. Earlier domain-specific tools such as CPSP-tools~\cite{CPSP2009} solve HP folding by enumerating a precomputed database of optimal H-cores (connected lattice subgraphs of hydrophobic residues), then asking a constraint solver only whether the remaining polar residues can be threaded around each candidate core; the applicability of that offline precomputation depends on the lattice and model variant. Our CP-SAT formulation instead encodes the full folding problem directly, trading some HP-specific power for portability, reproducibility, and direct comparability against a learning-based baseline on the same benchmark family.
 
-While constraint programming guarantees optimality when feasible, its exponential scaling limits practical applicability to shorter sequences. Reinforcement learning has recently emerged as an alternative approach for HP folding. An attention-based deep Q-learning approach has recently been applied to the three-dimensional HP model~\cite{AttnDRL2504}. Folding was treated as a sequential decision problem, where agents can learn folding strategies through trial-and-error without explicitly encoding the problem constraints~\cite{Yang2022}. Whether this reinforcement learning method can compete with exact solver approaches like CP-SAT remains unknown.
 
-This paper presents a modern approach to constraint programming for the 3D HP protein folding problem using Google OR-Tools CP-SAT, comparing it against the recent attention-based deep Q-learning method of~\cite{AttnDRL2504}. To enable a like-for-like comparison, we additionally rerun the RL baseline on hardware comparable to its published evaluation, so that both methods are exercised under the same operating conditions. Section~2 describes the implementation and training procedures for each method. Section~3 presents comparative results and scaling behaviour. Section~4 discusses algorithmic trade-offs, failure modes, and future research directions.
+Attention-based deep Q-learning treats folding as a sequential decision problem~\cite{AttnDRL2504}. Its training cost and solver search cost must be measured explicitly when comparing methods. A common CPU experiment answers a question about performance under a specified CPU allocation; it does not establish how GPU-accelerated RL would perform. An exact solver certifies optimality only when its status and bound establish that claim for the domain actually searched.
 
-\section{Methodology}
+Our central question is whether a learned model can identify folding decisions and repair regions for which bounded constraint search produces useful improvements. We distinguish this DecisionBoost hypothesis from the simpler fixed RL--CP-SAT hybrid. The contribution being tested is the learned HP-specific constructor/controller/solver cooperation, together with checked witnesses and reproducible cost accounting; we do not claim that hybrid optimisation itself is new.
 
-\subsection{Problem Formulation}
-
+\section{Problem and Methods}
+\subsection{HP Folding and Independent Verification}
 The HP protein folding problem on a three-dimensional lattice is defined as follows. A protein sequence is represented as a string:
 \begin{equation}
 S = s_1 s_2 \ldots s_n,
@@ -117,7 +105,7 @@ where $||v||_1 = |x| + |y| + |z|$ for a vector $v = (x, y, z)$.
 
 The energy of a conformation is determined by the number of non-consecutive H-H contacts. A contact occurs when two hydrophobic residues are neighbours on the lattice but not adjacent along the sequence. Formally, the energy function is defined as
 \begin{equation}
-E(C) = -\left|\{(i,j) : s_i = s_j = \text{H}, \, |i - j| > 1, \, ||c_i - c_j||_1 = 1\}\right|,
+E(C) = -\left|\{(i,j) : i<j, \, s_i = s_j = \text{H}, \, j-i > 1, \, ||c_i - c_j||_1 = 1\}\right|,
 \end{equation}
 where the set counts all pairs of non-consecutive H-residues that are lattice-adjacent. The objective is to minimise $E(C)$, which is equivalent to maximising the number of favourable hydrophobic contacts. This formulation reflects the simplified physical principle that hydrophobic residues prefer to cluster together, shielding themselves from the surrounding aqueous environment. An illustration of this energy function is provided in Figure~\ref{fig:hp_lattice}.
 
@@ -127,344 +115,81 @@ where the set counts all pairs of non-consecutive H-residues that are lattice-ad
     \caption{Illustration of the 3D HP lattice model showing a short self-avoiding walk. Hydrophobic residues (H) are shown in red, polar residues (P) in blue. Dotted magenta lines indicate valid non-consecutive H-H contacts that contribute to the energy function; this conformation has energy $-9\epsilon_{HH}$.}\label{fig:hp_lattice}
 \end{figure}
 
-We evaluate both methods on a set of benchmark sequences drawn from the literature. Table~\ref{tab:benchmarks} lists the sequences used in this study, identified by their standard names (e.g., 3d1, 3d2, \ldots, 3d8). The sequences span a range of lengths from $n = 20$ to $n = 58$ residues and include both their H/P patterns and best-known energy values from prior work~\cite{AttnDRL2504}.
+
+Every reported solution is a complete fold. An independent integer-coordinate checker verifies anchoring, unit backbone bonds, self-avoidance and the contact count without importing the neural model or solver. Individual contact counts are integers; fractional reported scores are averages over sequences or seeds. An absent solution remains missing rather than becoming a zero-contact solution.
+
+\subsection{Compact CP-SAT Model}\label{sec:cpsat_approach}
+The primary CPU implementation uses one integer coordinate triple per residue and an injective integer site identifier. Let $R=\lfloor n/2\rfloor$. The common domain is $|x_i|,|y_i|,|z_i|\le R$, with the origin and first bond fixed. Reachability additionally bounds each coordinate of zero-based residue $i$ by $i$. An \texttt{AllDifferent} constraint on the site identifiers enforces self-avoidance. Absolute coordinate differences impose unit backbone distance. For each non-consecutive H--H pair of opposite chain parity, a Boolean is true if and only if its Manhattan distance equals one. Maximising their sum therefore maximises the independently recomputed contact count~\cite{GoogleORTools,Perron2023}.
+
+A fresh CP-only run searches the full declared cube without a heuristic hint. A repair fixes all coordinates outside its movable window, retains both boundary bonds and every self-avoidance constraint, and constrains the contact objective not to fall below the incumbent. The incumbent is retained on solver failure. \texttt{OPTIMAL} in a repair refers only to that neighbourhood; \texttt{OPTIMAL} in a full primary search refers only to the declared cube. Neither is automatically an unrestricted lattice proof. Restarted solves do not retain a previous solve's learned clauses.
+
+\subsection{Project Attention-DQN Baseline}\label{sec:lstma_approach}
+The bundled project reference uses an explicit $(n,5)$ observation: coordinates, residue type and normalised chain index, with sentinels for unplaced residues. A duelling transformer estimates five relative placement actions. Training retains the reference Double-DQN target, prioritised replay, Adam optimiser, FP32 precision, valid-action mask and at most one replay update per episode. The mask also retains its reference symmetry restrictions and one-step trap lookahead. Separate models are initialised for each sequence and seed. This source is associated with the attention-based RL comparison~\cite{AttnDRL2504}, but the frozen project configurations in Table~\ref{tab:cluster_configs} are not silently substituted for the published protocol.
+
+The exploration schedule is fixed over 200,000 training episodes even when an elapsed-time cutoff truncates training. Periodic greedy evaluation restores the previous training mode in a \texttt{finally} block. If 200,000 episodes finish before the elapsed budget, training stops and the frozen policy continues sampling with exploration probability 0.05; those samples and their costs are identified separately. The old MPS execution backend is not used in the CPU campaign.
 
 \begin{table}[htbp]
 \centering
-\caption{Benchmark HP sequences used in this study. Best-known energies are taken from~\cite{AttnDRL2504}.}\label{tab:benchmarks}
-\begin{tabular}{lc>{\centering\arraybackslash}p{6.8cm}c}
+\caption{Frozen project DQN configurations. The 3d8 row is proposed; it was absent from the saved project protocol. These are not asserted to reproduce every hyperparameter in the original RL paper.}\label{tab:cluster_configs}
+\begin{tabular}{lrrrrrr}
 \toprule
-\textbf{Seq.} & \textbf{Length} & \textbf{Sequence} & \textbf{Best-known Energy} \\
+Sequence & Length & Batch & Replay & Width & Heads & Layers \\
 \midrule
-3d1 & 20 & ${(HP)}^{2}PH{(HP)}^{2}{(PH)}^{2}HP{(PH)}^{2}$ & $-11$ \\
-3d2 & 24 & $H^{2}P^{2}{(HP^{2})}^{6}H^{2}$ & $-13$ \\
-3d3 & 25 & $P^{2}HP^{2}{(H^{2}P^{4})}^{3}H^{2}$ & $-9$ \\
-3d4 & 36 & $P{(P^{2}H^{2})}^{2}P^{5}H^{5}{(H^{2}P^{2})}^{2}P^{2}H{(HP^{2})}^{2}$ & $-18$ \\
-3d5 & 46 & $P^2H^3PH^3P^3HPH^2PH^2P^2HPH^4$ \newline $PHP^2H^5PHPH^2P^2H^2P$ & $-35$ \\
-3d6 & 48 & $P^{2}H{(P^{2}H^{2})}^{2}P^{5}H^{10}P^{6}$ \newline ${(H^{2}P^{2})}^{2}HP^{2}H^{5}$ & $-31$ \\
-3d7 & 50 & $H^{2}{(PH)}^{3}PH^{4}PH{(P^{3}H)}^{2}P^{4}$ \newline ${(HP^{3})}^{2}HPH^{4}{(PH)}^{3}PH^{2}$ & $-34$ \\
-3d8 & 58 & $PH{(PH^{3})}^{2}P{(PH^{2}PH)}^{2}H{(HP)}^{3}$ \newline ${(H^{2}P^{2}H)}^{2}PHP^{4}{(H{(P^{2}H)}^{2})}^{2}$ & $-44$ \\
+3d1 & 20 & 512 & 8000 & 64 & 4 & 1 \\
+3d2 & 24 & 256 & 10000 & 256 & 8 & 2 \\
+3d3 & 25 & 1024 & 10000 & 256 & 8 & 2 \\
+3d4 & 36 & 1024 & 50000 & 256 & 8 & 2 \\
+3d5 & 46 & 2048 & 150000 & 256 & 8 & 3 \\
+3d6 & 48 & 2048 & 200000 & 256 & 8 & 3 \\
+3d7 & 50 & 256 & 30000 & 512 & 16 & 3 \\
+3d8 & 58 & 256 & 30000 & 512 & 16 & 3 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+\subsection{Fixed RL--CP-SAT Hybrid}
+The fixed hybrid uses the same DQN training configuration and adds a bounded CP repair every 1,000 episodes once a valid complete incumbent exists. Ten movable residues alternate between a suffix and a central internal window, with a 30-second maximum repair allowance. Model construction, solving and verification are charged to the same elapsed budget as RL training. CP-generated folds update the search incumbent but do not modify the RL replay buffer. This arm tests simple cooperation; it is not the learned DecisionBoost policy.
 
-\subsection{CP-SAT Approach}\label{sec:cpsat_approach}
+\subsection{DecisionBoost: Constructor, Controller and Solver}
+A separate experiment replicates the tested DecisionBoost architecture. A frozen, pinned ModernBERT-large encoder supplies full-sequence residue features. A fresh two-layer, width-64 transformer constructor receives those features together with explicit geometry and legal candidate features. A separate small transformer controller selects from suffix and internal repair windows of sizes 6, 10 and 16. CP-SAT produces verified improvements; elite improved folds provide constructor feedback, while observed repair gains supply controller targets. Tied maximal witnessed gains receive equal target mass. These targets describe bounded search outcomes, not exact action values or proofs that an unproductive action is infeasible.
 
-This section describes our constraint programming implementation using Google OR-Tools CP-SAT solver~\cite{GoogleORTools, Perron2023}. We formulate the 3D HP folding problem as a constraint satisfaction problem, encoding the self-avoiding walk and contact constraints algebraically to maximise H-H contacts.
+Each seed has fresh constructor/controller/optimiser states. The prescribed training schedule consists of 1,200 initial constructor steps, 256 solver-feedback steps and 1,200 controller steps. Evaluation freezes both learned models and compares learned repair selection with fixed, random, training-selected static and cheap-proposal controls. The pretrained encoder is reused; its original pretraining cost is unknown and is not described as zero. This is an open transformer decision prototype, not a Jev API call or an RL-trained folding policy.
 
-\subsubsection{Decision Variables}
+\section{Predeclared Cluster Experiments}\label{sec:results}
+\subsection{Hardware and Reproducibility}
+Primary runs target a verified homogeneous Apocrita EHC CPU selection. Current documentation describes AMD EPYC 9965 nodes, with jobs limited to 96 cores each~\cite{ApocritaEHC}. The provisional allocation is eight cores and 32 GB per run; a disposable pilot screens CPU thread counts 1, 2, 4 and 8 on 3d4, 3d6 and 3d8 before the common allocation is frozen. Primary runs record host, CPU model, Python/library versions, allocated cores, seeds, exact HP strings and executed-source hashes. We do not infer EPYC throughput from Apple laptop measurements.
 
-Our CP-SAT formulation uses one-hot encoding to represent where residues sit on the 3D cubic lattice. In one-hot encoding, each position is indicated by a binary vector where exactly one element is set to 1 (indicating the residue occupies that position) and all others are 0. For each residue $i \in \{0, 1, \ldots, n-1\}$ and each cell $c = (x, y, z)$ in the grid:
-\begin{equation}
-\mathcal{G} = \{(x,y,z) : x,y,z \in \{0, 1, \ldots, L-1\}\},
-\end{equation}
-we create a binary decision variable:
-\begin{equation}
-x_{i,c} \in \{0, 1\},
-\end{equation}
-where $x_{i,c} = 1$ means residue $i$ occupies position $c$, and $x_{i,c} = 0$ otherwise. The grid dimension $L$ needs to provide enough space for sequences of length $n$, typically satisfying $L \geq \lceil n^{1/3} \rceil + 2$.
+\subsection{Scheduler Ceiling, Compute Cutoff and Campaign Deadline}
+Apocrita recommends one-hour requests for its short partitions or a 240-hour ceiling for standard partitions~\cite{ApocritaRuntime}. The supplied campaign scripts request ten days but apply a separate, configurable compute cutoff. The provisional scientific budget is 24 hours per primary sequence/seed/method run, not ten days of mandatory computation. The budget is selected after the pilot and remains common across the three primary methods.
 
-For each pair of non-consecutive hydrophobic residues $(i,j)$ with $|i-j| > 1$ and $S_i = S_j = \text{H}$, we introduce contact indicators:
-\begin{equation}
-c_{i,j} \in \{0, 1\},
-\end{equation}
-where $c_{i,j} = 1$ if residues $i$ and $j$ occupy adjacent cells at Manhattan distance 1, and $c_{i,j} = 0$ otherwise.
+The complete campaign expires ten days after preparation/submission, including queue time. The worker stops launching work before that deadline; a separate parent process signals it at its per-run cutoff and forcibly terminates its own process group after a bounded saving grace. Checkpoints preserve networks, optimiser, replay priorities, update counts and random-number states. Explicit resume keeps the original deadline and charges previously consumed time; no automatic requeue or extension occurs. Late-starting and interrupted runs remain partial.
 
-\subsubsection{Core Constraints}
+\subsection{Primary CPU Comparison}
+The eight frozen benchmark strings have lengths 20, 24, 25, 36, 46, 48, 50 and 58. Five seeds per method give 120 runs. The shared optimisation endpoint is the best independently validated complete contact count obtained by each elapsed-time threshold, with trajectories at one, two, twelve and twenty-four hours and additional thresholds when the chosen budget permits. Greedy RL evaluation and training completion are reported separately from the best search incumbent. Full declared-cube proofs can justify an early solver finish; other premature finishes do not acquire fictitious budget coverage.
 
-The CP-SAT model enforces four main constraint types:
+Final tables require coverage at the requested budget or an applicable exact-domain proof. We report missing-solution frequency, completed-run counts, paired per-seed differences, descriptive variability and uncertainty appropriate to five seeds. Queue time, allocated CPU-hours and checkpoint/output overhead are reported alongside elapsed compute time. A short-time outcome does not establish eventual learning convergence. Historical GPU results and published best-seed values provide context only and are not pooled into CPU means.
 
-\paragraph{Placement constraint.} Each residue must sit in exactly one cell:
-\begin{equation}
-\sum_{c \in \mathcal{G}} x_{i,c} = 1 \quad \forall i \in \{0, \ldots, n-1\}.
-\end{equation}
+\subsection{Separate Fresh-Sequence DecisionBoost Replication}
+The optional five-pipeline experiment uses a new frozen corpus excluding reversal-equivalent sequences from previous local pilots and the benchmark set. It contains 128 training and 32 reserved validation sequences at lengths 16, 20, 28 and 36, and 72 test sequences, twelve each at lengths 16, 20, 28, 36, 48 and 58. Validation instances do not tune this fixed replication protocol. Every pipeline evaluates the same held-out strings.
 
-\paragraph{Self-avoidance constraint.} Each cell can hold at most one residue:
-\begin{equation}
-\sum_{i=0}^{n-1} x_{i,c} \leq 1 \quad \forall c \in \mathcal{G}.
-\end{equation}
+This experiment preserves the original complete reachable coordinate domains, origin/+x anchoring and single-worker CP search caps. Each fresh test case uses sixteen constructor proposals and four one-second repairs per policy; cold CP uses one four-second search. Equal solver call caps do not imply equal elapsed time. Encoder loading/encoding, cheap archive generation, solver teaching, neural training, proposal inference and online repair costs are logged separately. These results answer the learned repair-policy question and must not be merged into the primary restricted-cube elapsed-budget table. The protocol finishes when its prescribed cases finish, even if the cluster allocation has time remaining.
 
-\paragraph{Adjacency constraint.} Consecutive residues in the sequence must occupy neighbouring cells on the lattice, creating the self-avoiding walk. For each consecutive pair $(i, i+1)$, if residue $i$ sits in cell $c$, then residue $i+1$ must occupy one of the six adjacent cells:
-\begin{equation}
-\mathcal{N}(c) = \{c' \in \mathcal{G} : \|c - c'\|_1 = 1\}.
-\end{equation}
-We encode this using logical implications:
-\begin{equation}
-x_{i,c} = 1 \implies \sum_{c' \in \mathcal{N}(c)} x_{i+1,c'} = 1 \quad \forall i \in \{0, \ldots, n-2\}, \, \forall c \in \mathcal{G}.
-\end{equation}
+\section{Existing Pilot Evidence and Pending Results}
+The completed laptop engineering screen found no candidate optimisation meeting its predeclared ten-percent throughput threshold. MPS was approximately 4.2--5.4 times faster than the best tested CPU setting for its three representative disposable workloads. This identifies a local bottleneck; it does not predict the cluster runtime or establish learning performance.
 
-\paragraph{Contact linking constraint.} The contact indicators $c_{i,j}$ are linked to placement variables through reified constraints (constraints represented as boolean variables that can be true or false) that ensure $c_{i,j} = 1$ exactly when residues $i$ and $j$ occupy adjacent cells, while excluding consecutive backbone edges.
+A separate completed local DecisionBoost pilot used five fresh pipelines and 72 held-out sequences per pipeline. Learned repair selection improved mean final contacts by approximately 0.61 over a training-selected static repair policy and 1.11 over fixed ten-residue suffix repair under the tested call caps. The reported sequence-group bootstrap interval for the former difference was approximately 0.38--0.87 contacts, conditional on that finite test set. The experiment lasted about 2 hours 55 minutes overall. Its independent audit checked saved solver witnesses and protocol traces. It included no matched RL arm and did not establish end-to-end equal-time superiority. This evidence motivates the fresh cluster replication; it is not a cluster result.
 
-\subsubsection{Symmetry Breaking}
+The cluster result tables and quality-versus-time figures will be populated only after execution and independent verification. No optimality, RL superiority, CPU speedup or convergence conclusion is inferred from the planned allocation.
 
-The cubic lattice has 48 symmetries from rotations and reflections. To cut down the search space and speed up solving, we fix the first two residues at the grid center:
-\begin{align}
-x_{0, (\lfloor L/2 \rfloor, \lfloor L/2 \rfloor, \lfloor L/2 \rfloor)} &= 1, \\
-x_{1, (\lfloor L/2 \rfloor, \lfloor L/2 \rfloor, \lfloor L/2 \rfloor - 1)} &= 1.
-\end{align}
-This pins residue 0 at the center and residue 1 along the negative $z$-axis, which canonicalises the representation by providing a unique representative conformation from each equivalence class of symmetry-related solutions. This approach shrinks the search space by a factor of 48 without losing any optimal solutions.
+\section{Discussion and Claim Boundaries}\label{sec:discussion}
+The CPU experiment and the DecisionBoost replication address different questions. The former measures achievable quality under a common CPU allocation and elapsed budget. The latter isolates learned versus fixed repair selection using matched solver allowances and separately accounted offline costs. A CPU result does not describe GPU-accelerated RL, and a call-budget result does not automatically establish an elapsed-time advantage.
 
-\subsubsection{Objective Function}
+Combining neural proposals with a solver does not itself prove novelty or improved performance. The HP-specific learned decisions, verified solver feedback and ablation results must support the eventual contribution. Specialised CPSP/H-core methods remain relevant calibration references~\cite{CPSP2009}; comparison against general-purpose CP-SAT alone cannot establish superiority over exact HP methods. Bounds and optimality claims must name their domain, and the HP lattice task remains a combinatorial benchmark rather than a realistic all-atom folding model.
 
-The goal is to maximise the total number of non-consecutive H-H contacts. Let $\mathcal{H} = \{i : s_i = \text{H}\}$ denote the set of hydrophobic residue indices. The objective is:
-\begin{equation}
-\text{maximise} \quad \sum_{(i,j) \in \mathcal{C}} c_{i,j},
-\end{equation}
-where $\mathcal{C} = \{(i,j) : i,j \in \mathcal{H}, \, i < j, \, |i - j| > 1\}$ is the set of potential non-consecutive H-H contact pairs. Since the energy function is $E(C) = -\varepsilon_{HH} \cdot \sum_{(i,j) \in \mathcal{C}} c_{i,j}$, maximising contacts is equivalent to minimising energy.
-
-\subsubsection{Solver Configuration}
-
-We use Google OR-Tools CP-SAT version 9.11 with this setup for each sequence:
-\begin{itemize}
-\item \textbf{Optimisation phase:} 560 seconds (20\% of time budget) for finding the best grid size and tuning parameters across 5 random seeds
-\item \textbf{Final solve phase:} 2240 seconds (80\% of time budget) with optimised settings
-\item \textbf{Parallelisation:} 8 worker threads running parallel search
-\item \textbf{Total time budget:} 2800 seconds (roughly 47 minutes per sequence)
-\end{itemize}
-We determine grid size $L$ during the optimisation phase by testing values from $\lceil n^{1/3} \rceil + 2$ up to this value plus 3, picking the smallest grid that gives good solutions. The solver uses branch-and-bound search (a divide-and-conquer method that recursively splits the solution space while pruning branches proven suboptimal) with constraint propagation, conflict-driven clause learning, and automatic search strategies. When the solver finishes with \texttt{OPTIMAL} status, the solution is provably the best possible. When it stops with \texttt{FEASIBLE} status, the solution is valid but we can't guarantee it's optimal.
-
-\subsection{Attention-based DQN Baseline}\label{sec:lstma_approach}
-
-This section describes the attention-based deep Q-learning method of~\cite{AttnDRL2504}, which we use as the learning-based baseline. The method trains an agent to place residues sequentially on the 3D lattice, maximising H-H contacts through trial-and-error interaction with the environment, with action-value estimates produced by an attention-based Q-network. We use the authors' publicly available implementation and rerun the training protocol on hardware comparable to its published evaluation, so that the comparison with CP-SAT is exercised under similar operating conditions. Earlier project notes used the working label \emph{LSTM-A}; in the final comparison we describe the baseline according to the inspected implementation and target paper, namely an attention-based DQN.
-
-\subsubsection{Markov Decision Process Formulation}
-
-The 3D HP folding problem is formulated as a Markov Decision Process (MDP) defined by the tuple $(\mathcal{S}, \mathcal{A}, P, R, \gamma)$.
-
-The \textbf{state space} $\mathcal{S}$ consists of one-hot encoded vectors representing the folding trajectory. Each state is represented as a tensor of shape $(n, 8, 1)$, where $n$ is the sequence length. At each position in the sequence, the 8-dimensional vector encodes:
-\begin{equation}
-s_i = [\text{ND}, \text{F}, \text{L}, \text{R}, \text{U}, \text{D}, \text{H}, \text{P}],
-\end{equation}
-where the first six elements represent the available actions (No Decision, Forward, Left, Right, Up, Down) and the last two elements indicate the amino acid type (Hydrophobic or Polar). Importantly, the network does not directly observe 3D coordinates; instead, it infers spatial configurations from the sequence of actions taken.
-
-The \textbf{action space} $\mathcal{A}$ consists of five discrete relative placement directions:
-\begin{equation}
-\mathcal{A} = \{\text{Forward}, \text{Left}, \text{Right}, \text{Up}, \text{Down}\}.
-\end{equation}
-Each action specifies where to place the next residue relative to the current chain orientation. Backward moves are excluded since backtracking would violate the self-avoiding walk constraint.
-
-The \textbf{transition dynamics} are deterministic:
-\begin{equation}
-P(s_{t+1} | s_t, a_t) : \text{deterministic},
-\end{equation}
-where action $a_t$ determines the placement of the next residue based on the current chain orientation. Episodes terminate successfully when all $n$ residues are placed without collision, or terminate early if the agent reaches a configuration where no valid placements remain.
-
-The \textbf{reward function} $R(s_t, a_t)$ is sparse, providing feedback only upon episode termination:
-\begin{equation}
-R(s_t, a_t) = 
-\begin{cases}
-\sum_{(i,j)} c_{i,j} & \text{if all residues placed successfully} \\
-0 & \text{otherwise}
-\end{cases},
-\end{equation}
-where $c_{i,j} = 1$ indicates a valid H-H contact between non-consecutive hydrophobic residues $i$ and $j$ at Manhattan distance 1. This reward equals the negative energy $-E(C)$ from the problem formulation.
-
-\subsubsection{Environment Implementation}
-
-The reference implementation~\cite{AttnDRL2504} uses a custom Gymnasium environment with the following features:
-
-\paragraph{Bounded coordinate system.} Residue positions are constrained to lie within a cubic bounding box:
-\begin{equation}
-{[-r, r]}^{3} \quad \text{where} \quad r = \lfloor n/2 \rfloor.
-\end{equation}
-This prevents unbounded exploration and focuses search on compact conformations.
-
-\paragraph{Symmetry breaking.} To reduce the search space by a factor of 48 (24 rotational symmetries $\times$ 2 reflections), the environment enforces two constraints: the first non-forward turn must be to the right, and the first vertical deviation must be upward. This canonicalises equivalent conformations under lattice symmetries, providing a unique representative from each symmetry class.
-
-\paragraph{Trap detection.} The environment identifies dead-end configurations where no valid actions remain for the next residue placement. When trapped, the episode terminates immediately with zero reward, providing an implicit penalty that discourages exploration of unproductive regions.
-
-\paragraph{Action masking.} At each step, the environment computes a boolean mask:
-\begin{equation}
-m \in {\{0, 1\}}^{\lvert \mathcal{A} \rvert},
-\end{equation}
-indicating which actions satisfy three criteria: they do not violate the bounded region, they do not cause collisions with existing residues, and they do not lead immediately to a trapped state. This mask is used during action selection to restrict the agent's choices to feasible actions only.
-
-\subsubsection{Attention-based Q-Network}
-
-The action-value function $Q(s,a)$ is approximated by an attention-based Q-network as described in~\cite{AttnDRL2504}. The $(n, 8, 1)$ state tensor is embedded and processed by a multi-head self-attention encoder, which allows each position to attend to all previously placed residues and captures both local sequential patterns and long-range dependencies in the partial conformation. The encoder output at the final position is mapped through a fully connected layer to Q-values for the five placement actions. Architecture-level hyperparameters (embedding dimension, number of heads, number of encoder layers) follow the values reported in~\cite{AttnDRL2504} and are summarised, alongside training settings, in Table~\ref{tab:lstm_hyperparameters}.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\textwidth]{fig_dqn_architecture.png}
-    \caption{Attention-based Q-network used in the baseline~\cite{AttnDRL2504}. The $(n, 8, 1)$ state input is embedded and processed by a multi-head self-attention encoder, and the encoder output at the final position is mapped to Q-values for the five placement actions through a dense layer.}\label{fig:dqn_architecture}
-\end{figure}
-
-\subsubsection{Training Protocol}
-
-The training procedure in~\cite{AttnDRL2504} uses Deep Q-Learning with several standard stabilisation techniques: a Double DQN target with a periodically synchronised target network to mitigate overestimation bias, prioritised experience replay (with annealed importance-sampling correction) so that high-TD-error transitions receive more learning signal, and an $\varepsilon$-greedy exploration policy restricted to the valid actions indicated by the environment's action mask. Full equations for these techniques follow standard formulations and are not reproduced here; we refer the reader to~\cite{AttnDRL2504} for the exact specification.
-
-\paragraph{Hyperparameters and training details.} Following~\cite{AttnDRL2504}, separate models are trained for each benchmark sequence. Table~\ref{tab:lstm_hyperparameters} summarises the training configuration used.
-
-\begin{table}[htbp]
-\centering
-\caption{Attention-based DQN training hyperparameters reported by~\cite{AttnDRL2504}.}\label{tab:lstm_hyperparameters}
-\begin{tabular}{ll}
-\toprule
-\textbf{Parameter} & \textbf{Value} \\
-\midrule
-\multicolumn{2}{l}{\textit{Network Architecture}} \\
-Embedding dimension $d_{\text{model}}$ & 512 \\
-Attention heads & 4 \\
-\midrule
-\multicolumn{2}{l}{\textit{Training Configuration}} \\
-Optimiser & Adam \\
-Learning rate & $1.0 \times 10^{-3}$ \\
-Discount factor $\gamma$ & 0.98 \\
-Batch size & 16 (short seq.), 32 (long seq.) \\
-Training episodes & 200K--250K (short), 500K--750K (long) \\
-\midrule
-\multicolumn{2}{l}{\textit{Stabilisation Techniques}} \\
-Target network update & Every 1,000 steps \\
-PER $\alpha$ (prioritisation) & 0.6 \\
-PER $\beta$ (importance sampling) & 0.4 $\to$ 1.0 (annealed) \\
-$\varepsilon$-greedy decay & $\max(0.01, 1.0 \cdot 0.9995^t)$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Experiments and Results}\label{sec:results}
-
-\subsection{Experimental Setup}
-
-All experiments were conducted on an Apple MacBook Pro with M2 Max chip and 32 GB unified memory. The CP-SAT solver was implemented using Google OR-Tools version 9.11, while the attention-based DQN implementation was obtained from~\cite{AttnDRL2504} and executed locally. Both methods were evaluated on the standard 3D HP benchmark sequences (3d1--3d8) reported in~\cite{AttnDRL2504}, with best-known energy values serving as optimality targets.
-
-\subsection{CP-SAT Experiments}
-
-For CP-SAT, we allocated a total computational budget of 7 hours distributed across all 8 sequences (3d1--3d8), yielding approximately 47 minutes per sequence. Each sequence underwent a two-phase optimisation: 20\% of the budget (9 minutes, 20 seconds) for grid size exploration and parameter tuning across 5 random seeds, and 80\% of the budget (37 minutes, 20 seconds) for final optimisation with the best-discovered settings. The solver used 8 parallel worker threads throughout. All CP-SAT results reported in this chapter were obtained from our own experimental runs.
-
-\subsection{Attention DQN Experiments}
-
-For the attention-based DQN agent, we replicated the training protocol described in Section~\ref{sec:lstma_approach} on our local machine using the PyTorch MPS backend (M2 Max). Single-seed 200{,}000-episode runs were completed for sequences 3d1, 3d2, and 3d3; runs for 3d4 are in progress, and runs for 3d5--3d8 remain pending due to the substantial wall-clock cost of the published protocol.
-
-We therefore report a combination of results: locally reproduced 200{,}000-episode best-evaluation energies for 3d1--3d3, with published reference values from~\cite{AttnDRL2504} used for 3d4--3d8 until local reproduction completes. Figure~\ref{fig:training_curves} shows representative training dynamics from~\cite{AttnDRL2504} for sequences of varying lengths, illustrating how training complexity scales with sequence size.
-
-\begin{figure}[H]
-    \centering    
-    \begin{subfigure}[t]{0.75\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{training_rewards_48.png}
-        \caption{Length 48 (3d6)}\label{fig:training_48}
-    \end{subfigure}
-    
-    % \vspace{1.5em}
-    
-    \begin{subfigure}[t]{0.75\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{training_rewards_50.png}
-        \caption{Length 50 (3d7)}\label{fig:training_50}
-    \end{subfigure}
-    \caption{Attention DQN training convergence curves from~\cite{AttnDRL2504} for sequences of varying lengths. Blue areas show training rewards, red lines show evaluation performance.}\label{fig:training_curves}
-\end{figure}
-
-All results tables in this chapter clearly indicate the source of each result, distinguishing between our experimental runs and values taken from the original paper.
-
-
-\subsection{Solution Quality and Comparative Analysis}
-
-Table~\ref{tab:benchmark_results} presents the energy values achieved by both methods on the 3D HP benchmark sequences. The energy is defined as the negative count of non-consecutive H-H contacts, so more negative values indicate better (more stable) conformations.
-
-\begin{table}[htbp]
-\centering
-\caption{Solution quality on 3D HP benchmark sequences. Energy is the negative count of H-H contacts; lower (more negative) values are better. CP-SAT values are from this work. RL Source distinguishes locally reproduced 200{,}000-episode single-seed values (this work) from published reference values in~\cite{AttnDRL2504}.}\label{tab:benchmark_results}
-\begin{tabular}{lrrrrl}
-\toprule
-\textbf{Seq.} & \textbf{Len} & \textbf{Best Known} & \textbf{CP-SAT} & \textbf{RL} & \textbf{RL Source}\\
-\midrule
-3d1 & 20 & $-11$ & $-11$ & $-10$ & local 200k \\
-3d2 & 24 & $-13$ & $-13$ & $-9$  & local 200k \\
-3d3 & 25 & $-9$  & $-9$  & $-9$  & local 200k \\
-3d4 & 36 & $-18$ & $-18$ & $-18$ & published~\cite{AttnDRL2504} \\
-3d5 & 46 & $-35$ & $-32$ & $-33$ & published~\cite{AttnDRL2504} \\
-3d6 & 48 & $-31$ & $-29$ & $-30$ & published~\cite{AttnDRL2504} \\
-3d7 & 50 & $-34$ & $-30$ & $-29$ & published~\cite{AttnDRL2504} \\
-3d8 & 58 & $-44$ & $-40$ & $-40$ & published~\cite{AttnDRL2504} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[htbp]
-\centering
-\caption{Specialised exact reference (CPSP-tools / HPstruct) on the same benchmark family. CPSP-tools enumerates a precomputed cubic-lattice H-core database offline and uses Gecode at run time to verify that the chain can be threaded around each candidate core; results are reported here as a calibration anchor for the general-purpose CP-SAT formulation rather than as a like-for-like comparison.}\label{tab:cpsp_reference}
-\begin{tabular}{lrrrrl}
-\toprule
-\textbf{Seq.} & \textbf{Len} & \textbf{Best Known} & \textbf{CPSP/HPstruct} & \textbf{Time (s)} & \textbf{CPSP status}\\
-\midrule
-3d1 & 20 & $-11$ & $-11$ & 0.2 & proven optimal \\
-3d2 & 24 & $-13$ & $-13$ & 0.2 & proven optimal \\
-3d3 & 25 & $-9$  & $-9$  & 0.2 & proven optimal \\
-3d4 & 36 & $-18$ & $-18$ & 0.2 & proven optimal \\
-3d5 & 46 & $-35$ & $-35$ & 0.4 & proven optimal \\
-3d6 & 48 & $-31$ & $-31$ & 0.3 & proven optimal \\
-3d7 & 50 & $-34$ & $-34$ & 13.6 & proven optimal \\
-3d8 & 58 & $-44$ & ---   & 1.2 & H-core DB coverage limit \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-CPSP-tools attains the best-known energies on every sequence within its database coverage (3d1--3d7) in seconds. This is consistent with the shape of the method: the offline H-core enumeration has already pre-pruned the search to a small set of candidate cores per energy level, and the run-time work reduces to a sequence of small constraint-satisfaction queries. The CP-SAT gap on 3d5--3d7 therefore reflects the cost of a general-purpose constraint formulation that does not encode H-core structure, rather than a fundamental limit of constraint search on this benchmark family. For sequence 3d8 the bundled cubic H-core database does not contain a core large enough to accommodate the sequence's H-count; HPstruct terminates cleanly without a structure, leaving CP-SAT and the attention-DQN baseline as the only methods to report a value on this instance. The same database also cannot be reused if the lattice or model is changed, so the comparison should be read as a calibration of CP-SAT on the cubic HP family rather than as a verdict on constraint search overall.
-
-CP-SAT matches the best-known energy values on 3d1--3d4 (lengths 20--36) and terminates with \texttt{OPTIMAL} status on these instances, providing certificates of optimality through exhaustive branch-and-bound search within the allocated time budget. The published attention DQN reference also matches best-known on 3d1--3d4. Our local 200{,}000-episode reruns of the attention DQN match best-known on 3d3 but fall short on 3d1 ($-10$ versus $-11$) and 3d2 ($-9$ versus $-13$) under a single seed and the tested budget, suggesting the reproduction settings would benefit from additional seeds or a larger compute envelope.
-
-On longer sequences (3d5--3d8, lengths 46--58), neither method reaches the best-known values. CP-SAT maintains gaps of 2--4 contacts from the literature values and terminates with \texttt{FEASIBLE} status, unable to prove optimality within the time limit as the exponential search space growth overwhelms the constraint propagation and symmetry-breaking techniques. The published attention DQN reference shows similar performance with gaps of 2--5 contacts: $-33$ on 3d5 (within 2 of best-known), $-30$ on 3d6 (within 1), $-29$ on 3d7 (5 away), and $-40$ on 3d8. Notably, both methods converge to identical energy values on the longest sequence 3d8 (length 58), suggesting they face similar fundamental challenges in scaling to longer sequences.
-
-Figure~\ref{fig:quality_vs_length} visualises these results, clearly showing the transition from optimal performance on shorter sequences to increasing gaps on longer ones.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\textwidth]{fig_energy_comparison.png}
-    \caption{Solution quality comparison across benchmark sequences. Both methods achieve optimal solutions for sequences up to length 36 (3d1--3d4). Performance degrades gracefully on longer sequences, with gaps of 2--5 contacts from best-known values.}\label{fig:quality_vs_length}
-\end{figure}
-
-Figure~\ref{fig:3d7_comparison} illustrates representative conformations for sequence 3d7 (length 50), where CP-SAT achieved $-30$ contacts and the published attention DQN baseline reports $-29$ contacts.
-
-\begin{figure}[H]
-    \centering
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{3d7_cpsat.png}
-        \caption{CP-SAT solution: Energy = $-30$ contacts}\label{fig:3d7_cpsat}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{3d7_lstma.png}
-        \caption{Attention DQN baseline solution: Energy = $-29$ contacts}\label{fig:3d7_lstma}
-    \end{subfigure}
-    \caption{Conformations for sequence 3d7 (length 50). Panel a: CP-SAT achieves $-30$ contacts (red = H, blue = P). Panel b: published attention DQN baseline achieves $-29$ contacts (orange = H, cyan = P). Magenta lines mark non-consecutive H-H contacts.}\label{fig:3d7_comparison}
-\end{figure}
-
-\section{Discussion}\label{sec:discussion}
-
-This study compared constraint programming (CP-SAT) against an attention-based DQN reinforcement-learning baseline for the 3D HP protein folding problem, addressing whether systematic search with guarantees or learning-based exploration better handles this NP-hard combinatorial optimisation task.
-
-On sequences up to length 36, CP-SAT and the published attention DQN baseline both reach the best-known energies, with CP-SAT additionally providing optimality certificates through exhaustive search. The attention-based architecture captures geometric patterns for maximising hydrophobic contacts, indicating that neural networks can learn useful structure of the conformational landscape. Performance diverged on longer sequences (46--58 residues), where both methods fell 2--5 contacts short of best-known values. CP-SAT's gaps reflect exponential search-space growth overwhelming constraint propagation, while the RL baseline's gaps suggest learned policies struggle to generalise beyond training distributions. Their convergence to identical energies on the longest sequence (3d8: both achieving $-40$) indicates they encounter similar local optima despite completely different search strategies.
-
-CP-SAT provides optimality guarantees when tractable, making it ideal for benchmarking and establishing ground truth. The solver's deterministic behaviour ensures reproducibility and enables rigorous analysis through statistics. However, NP-hardness fundamentally limits scalability, and even sophisticated pruning eventually fails as the search space grows exponentially. The attention-based DQN learns placement policies from experience, potentially enabling faster solutions on similar sequences through transfer learning, and naturally models long-range relationships through self-attention.
-
-\paragraph{Limitations.} This study has several limitations. First, CP-SAT here is a modern implementation of constraint programming for HP folding rather than a new constraint-programming theory. Second, CP-SAT wall-clock budgets and RL training episodes are not directly equivalent measures of compute, so the comparison should be interpreted as an empirical benchmark rather than a strict speed contest. Third, some RL values are taken from the published reference~\cite{AttnDRL2504} until local reproduction runs are complete; our local 200{,}000-episode single-seed reruns currently match the published reference only on 3d3 and remain below it on 3d1 and 3d2 under the tested budget, and runs for 3d4--3d8 are still in progress. Fourth, the HP model is intentionally simplified and should be viewed as a computational benchmark rather than a realistic all-atom protein-folding model. Fifth, CPSP-tools is not an apples-to-apples baseline for CP-SAT. Its solution speed reflects an offline H-core precomputation, and it returns no result for sequences whose H-count exceeds the bundled database (as observed on 3d8) or for lattice variants other than 3D cubic.
-
-Future work should explore hybrid approaches combining CP-SAT's optimality-seeking with the RL baseline's pattern recognition, for example using CP-SAT to generate diverse training data or using learned policies to warm-start branch-and-bound search. Transfer learning also deserves investigation: can models pretrained on shorter sequences accelerate longer ones, and do they transfer across sequences with similar hydrophobic patterns? Hybrid pipelines that warm-start CP-SAT with H-core skeletons drawn from CPSP-tools, or that use CP-SAT to extend coverage beyond the precomputed H-core database (as required for sequences such as 3d8 and for non-cubic lattices), are a natural next step.
-
-\section*{Code Availability}
-
-The software, code, and data used in this study are available in public GitHub repositories and Github Gists:
-
-\begin{itemize}
-    \raggedright%
-    \item \textbf{CP-SAT Implementation:}\\
-    \url{https://github.com/pranav-ramanathan/HP-CSP}
-    \item \textbf{Attention-based DQN Baseline Implementation:}\\
-    \url{https://github.com/AnonymousAuthor117/Protein-Structure-Prediction-in-the-3D-HP-Model-Using-Deep-Reinforcement-Learning}
-    % [TODO-DATA: replace URL with the official repository associated with arXiv:2504.15634 once located]
-    \item \textbf{CPSP-tools reference runs:}\\
-    \texttt{scripts/run\_cpsp\_reference.py}, \texttt{scripts/analyze\_cpsp\_reference.py}, \texttt{results/cpsp\_reference/}
-    \item \textbf{Image Generation Prompts:}\\
-    \url{https://gist.github.com/pranav-ramanathan/f5a4f8effa07861ef452e802132e2dc8}
-\end{itemize}
-
+\section*{Code and Data Availability}
+The cloneable experiment bundle, frozen protocols, deadline guards and submission instructions are in \texttt{experiments/cluster/} of
+\url{https://github.com/pranav-ramanathan/Thesis-To-Paper}. Source provenance accompanies the project DQN reference. Completed local pilot artifacts remain separate from new cluster outputs. The earlier manuscript is archived for provenance; its claimed local reproduction results require their own artifact checks before reuse in a final comparison. The dissertation is unchanged.
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}
-
 \end{document}

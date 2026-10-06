@@ -9,3 +9,15 @@
 
 .omc/
 paper.pdf
+
+.env
+.env.*
+__pycache__/
+experiments/decisionboost/.deps/
+experiments/decisionboost/.cache/
+
+.venv-cluster/
+.cluster-runs/
+.cluster-models/
+experiments/cluster/.testdeps/
+*.pyc
