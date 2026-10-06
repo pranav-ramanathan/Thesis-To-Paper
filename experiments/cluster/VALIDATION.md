@@ -59,3 +59,15 @@ preserves partial sample counts, excludes them from core selection, and records
 its analyser hash. New pilot records additionally identify the active operation
 and warmup timings. Standard-library verification: **19 tests passed, five
 existing numerical tests skipped**. No new performance run was launched.
+
+## Corrected RL workload sizing
+
+The user supplied cluster diagnostics showing `timed_out=True` on every
+unfinished RL cell. The follow-up removes redundant benchmark updates (seven
+per representative instead of 22), enlarges caps within the same 50-minute
+application ceiling, and allows 120 seconds for compatibility checks. New
+tests mock numerical calls to verify exactly two warmups and five integrated
+updates, exploratory/evaluation probes, checkpoint disposal and the summed
+deadline reserves. **21 tests passed; five existing numerical tests skipped**.
+Python/Bash syntax passed; all 18 dissertation files remain unchanged. No local
+performance experiment or cluster follow-up was launched here.

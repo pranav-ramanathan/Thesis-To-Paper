@@ -161,7 +161,10 @@ submissions. You can also use `resource-test.sh cp_sat|rl NEW_DIRECTORY`.
 Each measurement uses a separate child process for meaningful peak resident
 memory. The **RL job**, on **3d4/3d6/3d8**, populates configured replay with distinct FP32
 arrays (repeated valid transition values), warms up twice, and targets five
-repetitions of updates and complete episode operations. It measures exploratory
+complete episode operations at epsilon 0.25. Their updates provide the five
+update timings too, for **seven updates total** including warmup. Separate
+exploratory/greedy rollout probes measure action/environment costs without
+adding optimizer updates or writing replay. The pilot measures exploratory
 and greedy action selection, environment stepping, insertion, updates, independent
 fold checking, trace writing, evaluation and a full optimizer/replay/RNG checkpoint.
 Synthetic buffer population time is reported separately; it does not estimate
@@ -172,8 +175,13 @@ The **CP-SAT job** runs five fresh full searches (15 seconds each) and
 fixed-window repairs (five seconds each) on each representative at each worker
 count. Both jobs check the remaining five exact strings: RL uses their actual
 architecture, batch and replay sizes; CP checks full search and repair once.
-Each RL representative cell is capped at 175 seconds, CP representative cell at
-125 seconds, RL compatibility cell at 40 seconds and other CP cell at 30 seconds.
+RL representative caps are 100–400 seconds depending on configuration/thread
+count, sized from the first EHC pilot. RL compatibility checks allow 120 seconds;
+CP representative caps remain 125 seconds and other CP caps 30 seconds.
+Caps include Python/library startup, which used part of the original short
+limits. The sum of RL cell caps, kill grace and reporting reserves fits inside
+the 50-minute application limit. Pilot jobs email the registered Apocrita
+address on completion or failure.
 Slow/native calls are terminated and saved as partial, with logs and sampled
 peak RSS; missing repetitions do not become successful timings.
 
@@ -196,6 +204,15 @@ automatically freeze a campaign budget. These disposable engineering states
 cannot establish learning convergence or a fair method ranking. The primary
 bundle records its exact executed sources, protocol, seeds and deadline. Every
 launch checks the frozen source hashes.
+
+The first EHC resource reports and deadline diagnostics are transcribed in
+[APOCRITA_PILOT_01.md](APOCRITA_PILOT_01.md), with provisional interpretations.
+To repeat the corrected **RL pilot only**, keep the completed CP pilot and use
+a fresh output directory:
+
+```bash
+bash experiments/cluster/rl-resource-test.sh "$HP_RUN_ROOT/pilot_rl_02"
+```
 
 ## Optional transformer + learned controller + CP-SAT replication
 

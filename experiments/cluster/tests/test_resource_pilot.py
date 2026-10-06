@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
@@ -14,7 +15,7 @@ from contextlib import redirect_stdout
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 from campaign import create, save, verify
-from resource_pilot import COUNTS, REPRESENTATIVES, diagnose, populate, recommend, report, run
+from resource_pilot import COUNTS, REPRESENTATIVES, cell, cell_budget, diagnose, populate, recommend, report, run
 
 
 def measured(seq, cores, seconds):
@@ -23,6 +24,44 @@ def measured(seq, cores, seconds):
 
 
 class ResourceTests(unittest.TestCase):
+    def test_rl_budgets_include_startup_and_fit_the_one_hour_job(self):
+        budgets = [cell_budget('rl', s, c) for c in COUNTS for s in REPRESENTATIVES]
+        total = sum(budgets)+5*cell_budget('compatibility', '3d1', 8)
+        self.assertLessEqual(total+17*5+15+45, 3000)
+        self.assertEqual(cell_budget('rl', '3d6', 1), 400)
+        self.assertEqual(cell_budget('compatibility', '3d5', 8), 120)
+
+    def test_representative_cell_uses_seven_updates_and_five_complete_operation_samples(self):
+        # Mock numerical operations: test control flow, never benchmark on laptop.
+        fake_torch = SimpleNamespace(set_num_threads=lambda n: None, set_num_interop_threads=lambda n: None)
+        agent = SimpleNamespace(memory=[None], update=MagicMock(return_value=.1))
+        fake_rollout = MagicMock(side_effect=lambda *a, **k: dict(rollout_s=.001, steps=20, complete=True))
+
+        def fake_checkpoint(agent, episode, recorder, next_evaluation, repairs):
+            (recorder.out/'checkpoint.pt').write_bytes(b'mock')
+            recorder.emit(dict(type='checkpoint', write_s=.001))
+
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(out=Path(directory), kind='rl', seq_id='3d4', threads=8, end_epoch=time.time()+60)
+            with patch.dict(sys.modules, {'torch':fake_torch, 'hp_solver':SimpleNamespace(solve=MagicMock())}), \
+                    patch('worker.seed_all'), patch('worker.make_agent', return_value=agent), \
+                    patch('worker.checkpoint', side_effect=fake_checkpoint), patch('signal.signal'), \
+                    patch('resource_pilot.populate', return_value=True), patch('resource_pilot.rollout', fake_rollout):
+                cell(args)
+            result = json.loads((Path(directory)/'measurement.json').read_text())
+            self.assertEqual(result['status'], 'complete')
+            self.assertEqual(agent.update.call_count, 7)
+            self.assertEqual(len(result['warmups_s']), 2)
+            self.assertEqual(len(result['updates_s']), 5)
+            self.assertEqual(len(result['episodes']), 5)
+            self.assertTrue(all(e['epsilon']==.25 for e in result['episodes']))
+            self.assertEqual(len(result['rollouts']), 10)
+            self.assertEqual(len(result['evaluations']), 5)
+            self.assertEqual(result['checkpoint']['bytes'], 4)
+            self.assertFalse((Path(directory)/'checkpoint.pt').exists())
+            isolated = [c for c in fake_rollout.call_args_list if c.kwargs.get('store') is False]
+            self.assertEqual(len(isolated), 10)
+
     def test_cp_and_rl_are_independent_frozen_pilot_jobs(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

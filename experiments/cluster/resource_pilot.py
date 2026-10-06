@@ -20,6 +20,22 @@ from campaign import save, verify
 HERE = Path(__file__).resolve().parent
 REPRESENTATIVES = ('3d4', '3d6', '3d8')
 COUNTS = (1, 2, 4, 8)
+# Per-cell wall caps include Python/library startup. Sized from the first EHC
+# pilot; total RL caps plus 5-second kill grace fit the 50-minute application cap.
+RL_BUDGETS = {
+    1: {'3d4':160, '3d6':400, '3d8':230},
+    2: {'3d4':130, '3d6':250, '3d8':170},
+    4: {'3d4':110, '3d6':200, '3d8':145},
+    8: {'3d4':100, '3d6':180, '3d8':130},
+}
+
+
+def cell_budget(kind, seq_id, threads):
+    if kind=='rl':
+        return RL_BUDGETS[threads][seq_id]
+    if kind=='compatibility':
+        return 120
+    return 125 if seq_id in REPRESENTATIVES else 30
 
 
 def peak_gib():
@@ -59,7 +75,7 @@ def populate(agent, capacity, stopped=lambda: False):
     return True
 
 
-def rollout(agent, epsilon, *, training, recorder, stopped):
+def rollout(agent, epsilon, *, training, recorder, stopped, store=True):
     from geometry import contacts
     started = time.monotonic()
     was_training = agent.policy_net.training
@@ -72,7 +88,7 @@ def rollout(agent, epsilon, *, training, recorder, stopped):
                 return None
             action = agent.select_action(state, epsilon)
             new, reward, done, _ = agent.env.step(action)
-            if training:
+            if training and store:
                 agent.store_transition(state, action, reward, new, done)
             state = new
             steps += 1
@@ -116,12 +132,18 @@ def cell(args):
     recorder = Recorder(args.out, config['sequence'])
     result = dict(kind=args.kind, seq_id=args.seq_id, threads=args.threads,
                   status='partial', phase='initialization', scientific_results=False,
-                  warmups_s=[], updates_s=[], episodes=[], evaluations=[])
+                  measurement_profile='cp_v1' if args.kind=='cp' else 'integrated_v2',
+                  profiling_overhead_s=0,
+                  warmups_s=[], updates_s=[], episodes=[], rollouts=[], evaluations=[])
 
     def persist():
+        profiling_started = time.monotonic()
         result.update(peak_rss_gib=peak_gib(), elapsed_s=time.monotonic()-started,
                       process_cpu_s=time.process_time()-cpu_start)
         save(args.out/'measurement.json', result)
+        elapsed = time.monotonic()-profiling_started
+        result['profiling_overhead_s'] += elapsed
+        return elapsed
 
     try:
         persist()
@@ -138,6 +160,7 @@ def cell(args):
                     incumbent = [[x, 0, 0] for x in range(radius+1)]
                     incumbent += [[x, 1, 0] for x in range(radius, -1, -1)]
                     incumbent = incumbent[:len(seq)]
+                    result['phase'] = f'cp_{mode}'; persist()
                     t0 = time.monotonic()
                     fold, status = solve(seq, seconds=min(seconds, max(0, args.end_epoch-time.time())),
                                          threads=args.threads, seed=repetition, emit=recorder.emit,
@@ -172,27 +195,32 @@ def cell(args):
             for repetition in range(repetitions):
                 if stopped():
                     return
-                result['phase'] = 'measured_update'; persist()
+                result['phase'] = 'training_rollout_epsilon_0.25'; persist()
                 t0 = time.monotonic()
+                row = rollout(agent, .25, training=True, recorder=recorder, stopped=stopped)
+                if row is None or stopped():
+                    return
+                result['phase'] = 'episode_update'; phase_write_s = persist()
+                u0 = time.monotonic()
                 loss = agent.update()
-                result['updates_s'].append(time.monotonic()-t0)
+                update_s = time.monotonic()-u0
+                result['updates_s'].append(update_s)
                 result['last_loss'] = loss
+                row.update(epsilon=.25, repetition=repetition, update_s=update_s)
+                recorder.emit(dict(type='episode', engineering_only=True, loss=loss, **row))
+                row['total_s'] = time.monotonic()-t0-phase_write_s
+                row['profiling_write_s'] = phase_write_s
+                result['episodes'].append(row)
                 persist()
-                # Three exploration regimes; one genuine update per episode.
-                for epsilon in (1.0, .25, 0.0):
-                    result['phase'] = f'training_rollout_epsilon_{epsilon}'; persist()
-                    t0 = time.monotonic()
-                    row = rollout(agent, epsilon, training=True, recorder=recorder, stopped=stopped)
-                    if row is None or stopped():
+                # Isolated exploratory/greedy rollout timings. These do not write
+                # replay or trigger more updates; full operations are timed above.
+                for epsilon in (1.0, 0.0):
+                    result['phase'] = f'rollout_only_epsilon_{epsilon}'; persist()
+                    extra = rollout(agent, epsilon, training=True, store=False,
+                                    recorder=recorder, stopped=stopped)
+                    if extra is None or stopped():
                         return
-                    result['phase'] = 'episode_update'; persist()
-                    u0 = time.monotonic()
-                    loss = agent.update()
-                    row.update(epsilon=epsilon, repetition=repetition,
-                               update_s=time.monotonic()-u0)
-                    recorder.emit(dict(type='episode', engineering_only=True, loss=loss, **row))
-                    row['total_s'] = time.monotonic()-t0
-                    result['episodes'].append(row)
+                    result['rollouts'].append(dict(epsilon=epsilon, repetition=repetition, **extra))
                     persist()
                 result['phase'] = 'greedy_evaluation'; persist()
                 row = rollout(agent, 0.0, training=False, recorder=recorder, stopped=stopped)
@@ -413,7 +441,7 @@ def run(args, protocol, recorder, *, stopped):
             threads = report(args.out)['recommendation']['recommended_common_cores'] or 8
         out = root/f'{index:02d}_{kind}_{seq_id}_{threads}cores'
         out.mkdir()
-        budget = {'rl':175, 'cp':125 if seq_id in REPRESENTATIVES else 30, 'compatibility':40}[kind]
+        budget = cell_budget(kind, seq_id, threads)
         end_epoch = min(args.end_epoch-15, time.time()+budget)
         env = dict(os.environ)
         for key in ('OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'NUMEXPR_NUM_THREADS'):

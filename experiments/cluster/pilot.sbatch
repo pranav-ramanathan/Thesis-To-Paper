@@ -8,6 +8,7 @@
 #SBATCH --mem=32G
 #SBATCH --signal=USR1@600
 #SBATCH --no-requeue
+#SBATCH --mail-type=END,FAIL
 set -euo pipefail
 HP_CAMPAIGN_DIR=$1
 source "$HP_CAMPAIGN_DIR/bundle/environment.sh"
