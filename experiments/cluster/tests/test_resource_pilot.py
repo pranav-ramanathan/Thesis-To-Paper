@@ -1,5 +1,6 @@
 """Resource-script checks with synthetic records; no local numerical workloads."""
 import json
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -8,11 +9,12 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
+from contextlib import redirect_stdout
 
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 from campaign import create, save, verify
-from resource_pilot import COUNTS, REPRESENTATIVES, populate, recommend, report, run
+from resource_pilot import COUNTS, REPRESENTATIVES, diagnose, populate, recommend, report, run
 
 
 def measured(seq, cores, seconds):
@@ -90,9 +92,48 @@ class ResourceTests(unittest.TestCase):
                                               exit_code=-9, timed_out=True, sampled_peak_rss_gib=12))
             data = report(root)
             self.assertEqual(data['measurements'][0]['status'], 'partial_or_failed')
+            self.assertEqual(data['measurements'][0]['failure_reason'], 'cell_deadline')
             self.assertEqual(data['recommendation']['provisional_ram_gib'], 18)
             self.assertIsNone(data['recommendation']['recommended_common_cores'])
             self.assertTrue((root/'resource_report.md').is_file())
+
+    def test_diagnostics_read_legacy_partial_samples_without_running_models(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)/'pilot'
+            create(root, mode='pilot', pilot_arm='rl')
+            cell = root/'tasks'/'000_pilot_rl_resources_seed0'/'cells'/'10_rl_3d6_8cores'
+            cell.mkdir(parents=True)
+            row = measured('3d6', 8, 10)
+            row.update(status='partial', episodes=row['episodes'][:2], updates_s=[9, 11], elapsed_s=175)
+            save(cell/'measurement.json', row)
+            save(cell/'cell_launch.json', dict(kind='rl', seq_id='3d6', threads=8,
+                                              exit_code=-9, timed_out=True, sampled_peak_rss_gib=11))
+            before = (cell/'measurement.json').read_bytes()
+            output = io.StringIO()
+            with redirect_stdout(output):
+                diagnose(root)
+            self.assertIn('timed_out=True', output.getvalue())
+            self.assertIn('updates=2 median=10.000s', output.getvalue())
+            self.assertIn('epsilon-.25 episodes=2 median=10.000s', output.getvalue())
+            self.assertEqual((cell/'measurement.json').read_bytes(), before)
+            self.assertFalse((cell/'worker.log').exists())
+            data = report(cell.parent.parent)
+            self.assertIsNone(data['recommendation']['recommended_common_cores'])
+            self.assertIn('Saved timings, including unfinished cells', (cell.parent.parent/'resource_report.md').read_text())
+
+    def test_exception_reason_is_distinct_from_timeout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cell = root/'cells'/'failed'
+            cell.mkdir(parents=True)
+            row = measured('3d4', 8, 1)
+            row.update(status='failed', error='ValueError: invalid fold')
+            save(cell/'measurement.json', row)
+            save(cell/'cell_launch.json', dict(kind='rl', seq_id='3d4', threads=8,
+                                              exit_code=1, timed_out=False, sampled_peak_rss_gib=5))
+            data = report(root)
+            self.assertEqual(data['measurements'][0]['failure_reason'], 'ValueError: invalid fold')
+            self.assertIsNone(data['recommendation']['recommended_common_cores'])
 
     def test_full_replay_owns_distinct_state_arrays(self):
         env = SimpleNamespace(reset=lambda: [0, 1], step=lambda action: ([1, 2], 0, True, {}))

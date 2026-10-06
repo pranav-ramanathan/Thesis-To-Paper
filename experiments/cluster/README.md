@@ -229,6 +229,22 @@ Partial training is preserved; no automatic restart/resume is provided for it.
 
 ## Monitor, analyse and explicitly resume
 
+If a resource report shows `partial_or_failed`, read its saved exit codes,
+timeout flags and individual timings before submitting another pilot:
+
+```bash
+bash experiments/cluster/resource-diagnose.sh "$HP_RUN_ROOT/pilot_rl_01"
+```
+
+This command only reads existing records and logs, and works with the original
+pilot outputs after a repository update. It runs no model or solver. Updated
+reports show completed-operation counts from unfinished cells while excluding
+those cells from resource selection. They distinguish per-cell deadlines from
+exceptions. Future pilots also record their active phase and warmup durations.
+`resource-report.sh` uses the current reader, verifies the frozen original
+bundle, and records the analyser hash alongside regenerated derived reports.
+The original measurements and executed-source snapshot are preserved.
+
 ```bash
 squeue -u "$USER"
 sacct -j JOB_ID --format=JobID,State,Elapsed,AllocCPUS,TotalCPU,MaxRSS,NodeList

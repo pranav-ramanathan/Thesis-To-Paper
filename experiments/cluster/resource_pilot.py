@@ -115,7 +115,8 @@ def cell(args):
     seed_all(80610)
     recorder = Recorder(args.out, config['sequence'])
     result = dict(kind=args.kind, seq_id=args.seq_id, threads=args.threads,
-                  status='partial', scientific_results=False, updates_s=[], episodes=[], evaluations=[])
+                  status='partial', phase='initialization', scientific_results=False,
+                  warmups_s=[], updates_s=[], episodes=[], evaluations=[])
 
     def persist():
         result.update(peak_rss_gib=peak_gib(), elapsed_s=time.monotonic()-started,
@@ -150,7 +151,9 @@ def cell(args):
             if not stopped():
                 result['status'] = 'complete'
         else:
+            result['phase'] = 'model_initialization'; persist()
             agent = make_agent(config)
+            result['phase'] = 'replay_population'; persist()
             t0 = time.monotonic()
             if not populate(agent, config['memory_size'], stopped):
                 return
@@ -161,11 +164,15 @@ def cell(args):
             for _ in range(2 if args.kind == 'rl' else 1):
                 if stopped():
                     return
+                result['phase'] = 'warmup_update'; persist()
+                t0 = time.monotonic()
                 agent.update()
+                result['warmups_s'].append(time.monotonic()-t0)
                 persist()
             for repetition in range(repetitions):
                 if stopped():
                     return
+                result['phase'] = 'measured_update'; persist()
                 t0 = time.monotonic()
                 loss = agent.update()
                 result['updates_s'].append(time.monotonic()-t0)
@@ -173,10 +180,12 @@ def cell(args):
                 persist()
                 # Three exploration regimes; one genuine update per episode.
                 for epsilon in (1.0, .25, 0.0):
+                    result['phase'] = f'training_rollout_epsilon_{epsilon}'; persist()
                     t0 = time.monotonic()
                     row = rollout(agent, epsilon, training=True, recorder=recorder, stopped=stopped)
                     if row is None or stopped():
                         return
+                    result['phase'] = 'episode_update'; persist()
                     u0 = time.monotonic()
                     loss = agent.update()
                     row.update(epsilon=epsilon, repetition=repetition,
@@ -185,6 +194,7 @@ def cell(args):
                     row['total_s'] = time.monotonic()-t0
                     result['episodes'].append(row)
                     persist()
+                result['phase'] = 'greedy_evaluation'; persist()
                 row = rollout(agent, 0.0, training=False, recorder=recorder, stopped=stopped)
                 if row is None:
                     return
@@ -192,6 +202,7 @@ def cell(args):
                 persist()
             if stopped():
                 return
+            result['phase'] = 'checkpoint_write'; persist()
             checkpoint(agent, len(result['episodes']), recorder, 3600, 0)
             record = json.loads((args.out/'events.jsonl').read_text().splitlines()[-1])
             result['checkpoint'] = dict(bytes=(args.out/'checkpoint.pt').stat().st_size,
@@ -203,6 +214,8 @@ def cell(args):
         result.update(status='failed', error=f'{type(exc).__name__}: {exc}')
         raise
     finally:
+        if result['status']=='partial' and stopped():
+            result['stop_reason'] = 'signal' if interrupted else 'cell_deadline'
         persist()
         recorder.handle.close()
 
@@ -251,6 +264,16 @@ def report(task_dir):
             row.update(kind=info['kind'], seq_id=info['seq_id'], threads=info['threads'])
             if info.get('exit_code') != 0 or info.get('timed_out'):
                 row['status'] = 'partial_or_failed'
+            if row.get('error'):
+                row['failure_reason'] = row['error']
+            elif info.get('timed_out'):
+                row['failure_reason'] = 'cell_deadline'
+            elif info.get('exit_code') not in (0, None):
+                row['failure_reason'] = f"process_exit_{info['exit_code']}"
+            elif row['status']!='complete':
+                row['failure_reason'] = row.get('stop_reason') or 'unfinished_measurement'
+            else:
+                row['failure_reason'] = None
             row['sampled_peak_rss_gib'] = info.get('sampled_peak_rss_gib')
             row['peak_rss_gib'] = max(row.get('peak_rss_gib', 0), info.get('sampled_peak_rss_gib', 0))
         rows.append(row)
@@ -258,7 +281,9 @@ def report(task_dir):
     pilot_arm = json.loads(scope_path.read_text())['pilot_arm'] if scope_path.exists() else (
         'cp_sat' if rows and all(r.get('kind')=='cp' for r in rows) else 'rl')
     recommendation = recommend(rows, pilot_arm=pilot_arm)
-    data = dict(pilot_arm=pilot_arm, scientific_results=False, measurements=rows, recommendation=recommendation)
+    from campaign import file_hash
+    data = dict(report_schema_version=2, analyser_sha256=file_hash(Path(__file__)),
+                pilot_arm=pilot_arm, scientific_results=False, measurements=rows, recommendation=recommendation)
     save(task_dir/'resource_report.json', data)
     core_message = (f"Candidate RL CPU request: **{recommendation['recommended_common_cores']} cores** (None means insufficient data)."
                     if pilot_arm=='rl' else f"CP-SAT tested candidate: **{recommendation['cp_candidate_workers']} workers**; "
@@ -267,12 +292,28 @@ def report(task_dir):
              core_message,
              f"Provisional RAM request: **{recommendation['provisional_ram_gib']} GiB per job**, including 50% headroom.",
              recommendation['limitations'], '',
-             '| Workload | Sequence | Cores | Status | Peak GiB | CPU / wall | Checkpoint MiB |',
-             '|---|---|---:|---|---:|---:|---:|']
+             '| Workload | Sequence | Cores | Status | Peak GiB | CPU / wall | Checkpoint MiB | Reason |',
+             '|---|---|---:|---|---:|---:|---:|---|']
     for row in rows:
         cpu = row.get('process_cpu_s', 0)/max(.001, row.get('elapsed_s', .001))
+        checkpoint_mb = f"{row['checkpoint']['bytes']/1024**2:.1f}" if row.get('checkpoint') else '—'
+        reason = (row.get('failure_reason') or row.get('error') or '—').replace('|', '\\|')
         lines.append(f"| {row.get('kind')} | {row.get('seq_id')} | {row.get('threads')} | {row['status']} | "
-                     f"{row.get('peak_rss_gib', 0):.2f} | {cpu:.2f} | {row.get('checkpoint', {}).get('bytes', 0)/1024**2:.1f} |")
+                     f"{row.get('peak_rss_gib', 0):.2f} | {cpu:.2f} | {checkpoint_mb} | {reason} |")
+    if pilot_arm=='rl':
+        lines += ['', '## Saved timings, including unfinished cells', '',
+                  'Each value uses only operations that finished. Partial cells retain their counts, '
+                  'and remain excluded from core selection and full-run extrapolations.', '',
+                  '| Sequence | Cores | Status | Updates measured | Median update seconds | '
+                  'Epsilon 0.25 episodes measured | Median episode seconds |',
+                  '|---|---:|---|---:|---:|---:|---:|']
+        for row in rows:
+            updates = row.get('updates_s', [])
+            episodes = [e['total_s'] for e in row.get('episodes', []) if e['epsilon']==.25]
+            update_value = f'{statistics.median(updates):.3f}' if updates else '—'
+            episode_value = f'{statistics.median(episodes):.3f}' if episodes else '—'
+            lines.append(f"| {row.get('seq_id')} | {row.get('threads')} | {row['status']} | "
+                         f"{len(updates)} | {update_value} | {len(episodes)} | {episode_value} |")
     if pilot_arm=='rl':
         lines += ['', '## Extrapolated RL throughput at the candidate core count', '',
               'Ranges are the minimum/maximum of five measured episodes at epsilon 0.25; '
@@ -326,6 +367,35 @@ def report(task_dir):
     return data
 
 
+def diagnose(campaign):
+    """Read existing frozen results; no numerical imports or new computation."""
+    campaign = Path(campaign).resolve()
+    manifest = verify(campaign)
+    if manifest['mode']!='pilot':
+        raise ValueError('Diagnostics expect a pilot directory')
+    tasks = list((campaign/'tasks').glob('*_pilot_*'))
+    if len(tasks)!=1:
+        raise ValueError('Pilot task has not started yet')
+    print(f"Pilot: {manifest.get('pilot_arm')}  Source revision: {manifest.get('git_revision')}")
+    for directory in sorted((tasks[0]/'cells').glob('*')):
+        load = lambda name: json.loads((directory/name).read_text()) if (directory/name).exists() else {}
+        row, launched = load('measurement.json'), load('cell_launch.json')
+        updates = row.get('updates_s', [])
+        episodes = [e['total_s'] for e in row.get('episodes', []) if e['epsilon']==.25]
+        median = lambda values: f'{statistics.median(values):.3f}s' if values else 'unmeasured'
+        print(f"{directory.name}: status={row.get('status', 'missing')} exit={launched.get('exit_code')} "
+              f"timed_out={launched.get('timed_out')} elapsed={row.get('elapsed_s', 0):.1f}s "
+              f"phase={row.get('phase', 'not recorded by older pilot')}")
+        print(f"  updates={len(updates)} median={median(updates)}; epsilon-.25 episodes={len(episodes)} median={median(episodes)}")
+        if row.get('error'):
+            print(f"  error: {row['error']}")
+        log = directory/'worker.log'
+        if launched.get('exit_code') not in (0, None) and not launched.get('timed_out') and log.exists():
+            print('  worker log tail:')
+            for line in log.read_text(errors='replace').splitlines()[-10:]:
+                print('    '+line)
+
+
 def run(args, protocol, recorder, *, stopped):
     root = args.out/'cells'
     root.mkdir()
@@ -352,6 +422,7 @@ def run(args, protocol, recorder, *, stopped):
                    '--seq-id', seq_id, '--threads', str(threads), '--out', str(out),
                    '--end-epoch', str(end_epoch)]
         info = dict(kind=kind, seq_id=seq_id, threads=threads, budget_s=budget, sampled_peak_rss_gib=0)
+        info['start_epoch'] = time.time()
         save(out/'cell_launch.json', info)
         recorder.emit(dict(type='resource_cell_start', **info))
         with (out/'worker.log').open('w') as log:
@@ -373,7 +444,8 @@ def run(args, protocol, recorder, *, stopped):
                 if sent_at is not None and time.time()-sent_at >= 5:
                     child.kill()
                 time.sleep(.25)
-            info.update(exit_code=child.wait(), timed_out=sent_at is not None)
+            info.update(exit_code=child.wait(), timed_out=sent_at is not None,
+                        elapsed_s=time.time()-info['start_epoch'])
         save(out/'cell_launch.json', info)
         # Remove any killed checkpoint write, preventing cumulative scratch growth.
         for path in out.glob('checkpoint.pt*'):
@@ -395,8 +467,11 @@ if __name__ == '__main__':
     parser.add_argument('--out', type=Path)
     parser.add_argument('--end-epoch', type=float)
     parser.add_argument('--report', type=Path, help='Frozen pilot directory; no numerical imports')
+    parser.add_argument('--diagnose', type=Path, help='Read existing pilot timings and failure details; no numerical imports')
     args = parser.parse_args()
-    if args.report:
+    if args.diagnose:
+        diagnose(args.diagnose)
+    elif args.report:
         manifest = verify(args.report.resolve())
         if manifest['mode'] != 'pilot':
             parser.error('--report expects a pilot directory')

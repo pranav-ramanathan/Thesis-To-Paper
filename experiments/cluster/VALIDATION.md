@@ -49,3 +49,13 @@ RAM headroom and core selection, incomplete/failed measurement rejection, and
 distinct resident replay arrays. Bash/Python syntax checks passed. All 18
 dissertation checksums remain unchanged. Target-cluster execution remains the
 purpose of these scripts, rather than a claimed result.
+
+## Partial-pilot diagnostics
+
+After the first Apocrita reports showed incomplete RL cells, a read-only
+diagnostic command was added to distinguish recorded deadlines from exceptions
+and expose timings already saved by the original pilot. Revised reporting
+preserves partial sample counts, excludes them from core selection, and records
+its analyser hash. New pilot records additionally identify the active operation
+and warmup timings. Standard-library verification: **19 tests passed, five
+existing numerical tests skipped**. No new performance run was launched.
