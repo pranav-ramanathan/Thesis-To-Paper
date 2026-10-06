@@ -207,6 +207,14 @@ launch checks the frozen source hashes.
 
 The first EHC resource reports and deadline diagnostics are transcribed in
 [APOCRITA_PILOT_01.md](APOCRITA_PILOT_01.md), with provisional interpretations.
+The completed corrected RL pilot is transcribed in
+[APOCRITA_PILOT_02.md](APOCRITA_PILOT_02.md): eight threads were fastest among
+the tested counts, all eight rows completed their eight-thread checks, and
+Slurm reported 10.92G peak memory. One four-thread 3d6 cell remained partial
+after recording all five episode timings. This is enough to end broad resource
+profiling; the next recommendation is a separate 24-hour seed-0 learning and
+memory feasibility pass before freezing the five-seed campaign. No such pass
+has been submitted here. The full-run templates still request 32 GiB.
 To repeat the corrected **RL pilot only**, keep the completed CP pilot and use
 a fresh output directory:
 

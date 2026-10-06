@@ -51,6 +51,16 @@ per primary run**. Inspect the CPU pilot before selecting that budget; freeze
 the choice before viewing final comparison outcomes. An absolute campaign
 deadline expires ten days after preparation, including queue time.
 
+The reported Apocrita resource pilots now support eight cores among the tested
+1/2/4/8 counts. The corrected RL run checked all eight configurations at eight
+threads, including full replay checkpoints, with reported peak memory 10.92G.
+One four-thread large-batch cell reached its engineering deadline. Stop broad
+profiling and assess a separate 24-hour seed-0 pass on 3d4/3d6/3d8 before
+freezing five-seed budgets. Extrapolated 200,000-episode durations at eight
+threads are approximately 9.9/39.0/15.7 days; these are short-episode throughput
+forecasts, with no convergence claim. See
+[the reported pilot findings](experiments/cluster/APOCRITA_PILOT_02.md).
+
 Record quality at one, two, twelve and twenty-four hours, training completion,
 greedy policy outcomes and best validated search folds separately. If the fixed
 200,000-episode training finishes early, identify the subsequent frozen-policy
