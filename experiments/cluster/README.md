@@ -95,7 +95,12 @@ The reported completion of array `30608441` is recorded in
 24 hours; CP-SAT scored highest on the three representatives and the fixed
 hybrid improved on RL. The report distinguishes these one-seed best folds
 from policy learning and the separate learned DecisionBoost study. The next
-decision requires trajectories, episode counts and greedy evaluations.
+diagnostics show high exploration after incomplete training and little late
+best-fold improvement; hold the remaining campaign pending a learning audit.
+Updated `analyse.py` reports trajectories, training counts, full-search bounds
+and the latest nonempty greedy evaluation within budget. Empty cutoff records
+are excluded, genuine zero-contact outcomes retained and raw records preserved.
+It records the current analyser hash while verifying the original frozen bundle.
 The full submission command below still creates all 120 tasks; continuing
 with the remaining 111 requires explicit exclusions and combined analysis
 across the frozen bundles to avoid duplicating these seed-0 observations.

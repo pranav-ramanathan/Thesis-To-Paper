@@ -71,6 +71,17 @@ DecisionBoost evaluation. Inspect trajectories, training progress and solver
 bounds before selecting the subsequent budget. See
 [the reported seed-0 findings](experiments/cluster/APOCRITA_SEED0_24H.md).
 
+Follow-up diagnostics show that CP-SAT's one-hour incumbents already exceeded
+the 24-hour RL and fixed-hybrid incumbents on all three strings. Eight of nine
+best scores were unchanged between the 12- and 24-hour checkpoints. All RL
+runs were incomplete (roughly 2.4–10.0% of the 200,000-episode schedule), with
+final epsilon approximately 0.61–0.89 and weak sampled greedy policies.
+Full-search solver statuses were FEASIBLE, with loose bounds rather than
+optimality proofs. Empty deadline evaluations must be excluded from policy
+summaries, while genuine zero-contact folds remain visible. Hold the remaining
+campaign pending latest usable evaluations and a bounded learning audit;
+retain the executed reference and distinguish any changed method explicitly.
+
 Record quality at one, two, twelve and twenty-four hours, training completion,
 greedy policy outcomes and best validated search folds separately. If the fixed
 200,000-episode training finishes early, identify the subsequent frozen-policy

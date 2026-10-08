@@ -84,6 +84,57 @@ class ProtocolTests(unittest.TestCase):
             self.assertEqual(m['run_seconds'],86400)
             self.assertEqual(verify(Path(d)/'run'),m)
 
+    def test_deadline_evaluations_cannot_hide_latest_real_greedy_result(self):
+        from analyse import analyse
+        with tempfile.TemporaryDirectory() as d:
+            out=Path(d)/'run';create(out,mode='campaign',stage='seed0-feasibility')
+            task=out/'tasks/001_rl_3d4_seed0';task.mkdir()
+            save(task/'result.json',dict(episode=20000,updates=19970,repairs=0,training_complete=False))
+            events=[dict(type='evaluation',elapsed_s=10,episode=1,episodes=10,completed_folds=10,mean_complete_contacts=1,mean_reward=1),
+                    dict(type='evaluation',elapsed_s=80000,episode=19000,episodes=10,completed_folds=10,mean_complete_contacts=5,mean_reward=5),
+                    dict(type='evaluation',elapsed_s=82800,episode=19500,episodes=10,completed_folds=10,mean_complete_contacts=0,mean_reward=0),
+                    dict(type='episode',elapsed_s=86398,episode=19999,updates=19969,epsilon=.61,loss=2),
+                    dict(type='episode',elapsed_s=86401,episode=20000,updates=19970,epsilon=.1,loss=1),
+                    dict(type='evaluation',elapsed_s=86402,episode=20000,episodes=0,completed_folds=0,mean_complete_contacts=None,mean_reward=None),
+                    dict(type='evaluation',elapsed_s=86403,episode=20000,episodes=10,completed_folds=10,mean_complete_contacts=99,mean_reward=99)]
+            raw=''.join(json.dumps(e)+'\n' for e in events)
+            (task/'events.jsonl').write_text(raw)
+            report=analyse(out)
+            row=report['tasks'][1]
+            self.assertEqual(row['first_greedy_evaluation']['mean_complete_contacts'],1)
+            self.assertEqual(row['latest_greedy_evaluation']['mean_complete_contacts'],0)
+            self.assertEqual(row['latest_greedy_evaluation']['elapsed_s'],82800)
+            self.assertEqual(row['empty_evaluation_records'],1)
+            self.assertEqual(len(row['evaluations_within_budget']),3)
+            self.assertEqual(row['last_episode_within_budget']['epsilon'],.61)
+            self.assertFalse(row['training_complete'])
+            self.assertEqual((task/'events.jsonl').read_text(),raw)
+            self.assertEqual(report['analyser_sha256'],__import__('campaign').file_hash(HERE/'analyse.py'))
+            text=(out/'report.md').read_text()
+            self.assertIn('0.000 | 10/10 | 23.000',text)
+            self.assertNotIn('99.000',text)
+
+    def test_incomplete_greedy_rollouts_are_visible_and_repair_bounds_are_separate(self):
+        from analyse import analyse
+        with tempfile.TemporaryDirectory() as d:
+            out=Path(d)/'run';create(out,mode='campaign',stage='seed0-feasibility')
+            task=out/'tasks/001_rl_3d4_seed0';task.mkdir()
+            events=[dict(type='evaluation',elapsed_s=10,episodes=10,completed_folds=10,mean_complete_contacts=5),
+                    dict(type='evaluation',elapsed_s=3600,episodes=10,completed_folds=0,mean_complete_contacts=None)]
+            (task/'events.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in events))
+            cp=out/'tasks/000_cp_sat_3d4_seed0';cp.mkdir()
+            (cp/'events.jsonl').write_text(json.dumps(dict(type='solver_end',elapsed_s=86399,status='FEASIBLE',contacts=18,bound=40,scope='full_declared_cube'))+'\n'+
+                                         json.dumps(dict(type='solver_end',elapsed_s=86400,status='OPTIMAL',contacts=18,bound=18,scope='restricted_repair'))+'\n')
+            report=analyse(out)
+            self.assertIsNone(report['tasks'][1]['latest_greedy_evaluation']['mean_complete_contacts'])
+            self.assertEqual(report['tasks'][1]['latest_greedy_evaluation']['completed_folds'],0)
+            self.assertEqual(report['tasks'][0]['full_search_end']['bound'],40)
+            self.assertEqual(report['tasks'][0]['full_search_end']['status'],'FEASIBLE')
+            self.assertFalse(report['tasks'][0]['full_cube_optimal'])
+            text=(out/'report.md').read_text()
+            self.assertIn('— | 0/10 |',text)
+            self.assertIn('| 3d4 | 0 | FEASIBLE | 18 | 40 |',text)
+
     def test_bundle_and_deadline_tampering_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             out=Path(d)/'run';create(out,mode='campaign')
