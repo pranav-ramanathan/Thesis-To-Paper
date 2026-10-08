@@ -90,6 +90,16 @@ episodes/epsilon, checkpoints and peak memory. One seed cannot establish a
 multi-seed method ranking. Use these results to choose the later five-seed
 budget; no full campaign or deadline extension follows automatically.
 
+The reported completion of array `30608441` is recorded in
+[APOCRITA_SEED0_24H.md](APOCRITA_SEED0_24H.md). All nine tasks completed at
+24 hours; CP-SAT scored highest on the three representatives and the fixed
+hybrid improved on RL. The report distinguishes these one-seed best folds
+from policy learning and the separate learned DecisionBoost study. The next
+decision requires trajectories, episode counts and greedy evaluations.
+The full submission command below still creates all 120 tasks; continuing
+with the remaining 111 requires explicit exclusions and combined analysis
+across the frozen bundles to avoid duplicating these seed-0 observations.
+
 ## Methods and scientific scope
 
 - `cp_sat`: one continuous full-model search in the declared cube, with eight

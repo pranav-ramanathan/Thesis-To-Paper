@@ -61,6 +61,16 @@ threads are approximately 9.9/39.0/15.7 days; these are short-episode throughput
 forecasts, with no convergence claim. See
 [the reported pilot findings](experiments/cluster/APOCRITA_PILOT_02.md).
 
+The reported 24-hour seed-0 feasibility array has now completed on the three
+representatives. CP-SAT/RL/fixed-hybrid contact counts were respectively
+18/10/14 on 3d4, 31/16/22 on 3d6 and 41/17/29 on 3d8. The cluster analyser
+reported 1,892 checked witnesses and zero errors; Slurm reported all nine
+tasks completed, with peak RSS about 11.30 GiB. These are one-seed best-search
+outcomes, not greedy policy quality, a multi-seed ranking or a learned
+DecisionBoost evaluation. Inspect trajectories, training progress and solver
+bounds before selecting the subsequent budget. See
+[the reported seed-0 findings](experiments/cluster/APOCRITA_SEED0_24H.md).
+
 Record quality at one, two, twelve and twenty-four hours, training completion,
 greedy policy outcomes and best validated search folds separately. If the fixed
 200,000-episode training finishes early, identify the subsequent frozen-policy
@@ -91,6 +101,12 @@ accounting; pretrained encoder training cost is unknown.
 Keep the completed local pilot in a clearly labelled motivating subsection.
 Its five-pipeline improvement over static selection does not establish superiority
 over RL, an equal-time end-to-end advantage, or learning convergence.
+
+Present the completed cluster seed-0 pass separately from the pending repeated
+campaign: CP-SAT obtained the strongest witnessed score on all three selected
+strings, while the fixed hybrid improved on RL. Attribute hybrid search gains
+to the measured combined procedure; do not infer learned policy improvements
+or benefits of the unevaluated learned controller from those best-fold scores.
 
 Populate new primary tables only from verified cluster outputs. Present contact
 trajectories, completion fractions, time-to-target with censoring, seed variability,
