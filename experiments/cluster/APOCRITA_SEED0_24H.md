@@ -158,3 +158,17 @@ Any changed budget, model or training schedule needs a clearly separate protocol
 do not merge these 24-hour results into a changed-budget final endpoint.
 The optional learned DecisionBoost replication needs its own experiment and
 cost accounting. No new jobs were submitted while recording these findings.
+
+## User-selected continuation — 9 October 2026
+
+The user selected the practical **RL versus CP-SAT** comparison under the
+unchanged 24-hour cold-start budget. This yields 80 observations: eight strings,
+five seeds and two methods. The prepared continuation reuses these six CP/RL
+observations, queues only the remaining 74 and aggregates both sources with
+verified provenance. The three hybrid results remain secondary evidence.
+It inherits the original absolute deadline rather than extending the campaign.
+The reference's masking limitation and incomplete training are disclosed in
+[BASELINE_AUDIT.md](BASELINE_AUDIT.md). This continuation does not claim that
+the learning concerns were numerically resolved; it answers the achievable
+quality-within-budget question. The earlier recommendation to audit learning
+before launching all 111 three-method tasks remains recorded above for context.

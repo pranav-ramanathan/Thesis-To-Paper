@@ -2,7 +2,7 @@
 # Freeze source/configurations before submitting. No hidden or automatic follow-up jobs.
 set -euo pipefail
 HP_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-[[ $# -ge 2 ]] || { echo 'Usage: submit.sh pilot|campaign OUT [--stage full|seed0-feasibility] [--pilot-arm cp_sat|rl] [--run-hours H] [--concurrency N] [--threads N] [--include-decisionboost --model-dir DIR] [--dry-run]' >&2; exit 2; }
+[[ $# -ge 2 ]] || { echo 'Usage: submit.sh pilot|campaign OUT [--stage full|seed0-feasibility|rl-vs-cp-sat] [--reuse-campaign DIR] [--pilot-arm cp_sat|rl] [--run-hours H] [--concurrency N] [--threads N] [--include-decisionboost --model-dir DIR] [--dry-run]' >&2; exit 2; }
 HP_MODE=$1; HP_OUT=$2; shift 2
 source "$HP_SCRIPT_DIR/environment.sh"
 HP_ARGS=(); HP_DRY_RUN=0
@@ -35,6 +35,9 @@ fi
 if [[ "$HP_MODE" == pilot ]]; then HP_OPTIONS+=(--job-name="hp-$HP_PILOT_ARM-resources"); fi
 if [[ "$HP_STAGE" == seed0-feasibility ]]; then
     HP_OPTIONS+=(--job-name=hp-seed0-feasibility --mail-type=END,FAIL)
+fi
+if [[ "$HP_STAGE" == rl-vs-cp-sat ]]; then
+    HP_OPTIONS+=(--job-name=hp-rl-vs-cp --mail-type=END,FAIL)
 fi
 # A hardware restriction is compulsory for the primary comparison. Feature names
 # must come from sinfo; the docs do not publish an EHC Slurm feature string.

@@ -31,7 +31,9 @@ some latency: record actual elapsed time and ignore post-budget witnesses for
 timepoint comparisons. Jobs also receive Slurm's pre-timeout signal. There is no
 automatic requeue, extension or follow-up campaign.
 
-There are 120 primary jobs: eight exact strings × five seeds × three methods.
+The legacy three-method submission contains 120 primary jobs: eight exact
+strings × five seeds × three methods. The current two-method comparison is
+described below.
 At 24 hours and 24 concurrent jobs this is roughly five waves / five days if all
 jobs use their full budgets, before queue delays. Concurrency 24 means up to 192
 allocated CPUs across jobs, **eight per job**. EHC's documented 96-core limit is
@@ -41,7 +43,74 @@ before saving overhead. This is not a prediction of actual usage or queue time.
 Changing concurrency changes completion feasibility. Late or interrupted runs
 are explicitly partial, not silently treated as full-budget outcomes.
 
-## Next step: 24-hour seed-0 feasibility pass
+## Current main experiment: RL versus CP-SAT
+
+The main comparison now uses **eight exact sequences × five seeds × two
+methods = 80 observations**, each with a 24-hour cold-start CPU budget. The
+existing seed-0 pass supplies six compatible CP-SAT/RL observations on
+3d4/3d6/3d8; the three fixed-hybrid observations remain separate secondary
+evidence. The continuation queues **74 new tasks**, with up to **24 concurrent
+tasks**, eight CPU cores and 32 GiB each. Slurm still requests ten days.
+The application enforces the original seed-0 absolute deadline, **16 October
+2026 at 20:38:37 UTC**, so preparation does not reset or extend that window.
+
+From the existing Apocrita clone:
+
+```bash
+git pull --ff-only
+HP_NODE_CONSTRAINT=ehc HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 \
+  bash experiments/cluster/rl-cp-comparison.sh \
+    "$PWD/.cluster-runs/seed0_24h_01" \
+    "$PWD/.cluster-runs/rl_vs_cp_24h_01"
+```
+
+This command submits array `0-73%24` when all six source observations validate.
+It enables END/FAIL mail to the registered Apocrita address. A different reused
+campaign may yield a different task count; the manifest prints the number of
+new/reused tasks and planned allocated CPU-hours. Use a fresh destination.
+Append `--dry-run` with a separate destination to inspect the command without
+submitting, then use another fresh destination for the real submission.
+No new dependency installation is needed for the existing environment.
+
+Reuse verifies the original frozen bundle, the scientific sources,
+configuration/global training settings, seed and budget, pinned numerical
+versions, CPU/device/allocation metadata, successful completion and independent
+fold scores. Incompatible or incomplete data stops preparation before `sbatch`.
+Raw launch/result/event files are hashed into the continuation manifest.
+The reader verifies those hashes again and aggregates six original and 74 new
+observations exactly once. Keep the original directory available on persistent
+shared storage. Its derived reports may be regenerated; its raw records and
+frozen bundle must remain unchanged. New jobs reject a CPU model different
+from the reused observations, in addition to requesting the verified `ehc` pool.
+
+The additional runs cost up to **14,208 allocated CPU-hours before saving
+overhead**. At sustained concurrency 24, four waves take about **four compute
+days**, plus queue/startup/saving time. Available resources determine actual
+concurrency; late starts can be truncated by the inherited deadline.
+[Apocrita arrays](https://docs.hpc.qmul.ac.uk/using/arrays/),
+[runtime guidance](https://docs.hpc.qmul.ac.uk/using/submittingjobs/runtime/).
+
+Monitor and collect both new and reused outcomes with one report command:
+
+```bash
+squeue -u "$USER"
+sacct -j "$(cat .cluster-runs/rl_vs_cp_24h_01/job_id.txt)" \
+  --format=JobID,State,Elapsed,ExitCode,AllocCPUS,TotalCPU,MaxRSS
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 \
+  bash experiments/cluster/comparison-report.sh "$PWD/.cluster-runs/rl_vs_cp_24h_01"
+```
+
+The report includes final means/SD with five-seed coverage, per-run trajectories,
+training counts/epsilon, latest usable greedy evaluations, full-search bounds,
+and original source paths for reused observations. A zero score is retained;
+missing/incomplete outcomes remain missing. The inherited unmasked Double-DQN
+target is documented in [BASELINE_AUDIT.md](BASELINE_AUDIT.md). This continuation
+preserves that project reference and its training schedule to retain comparable
+observations; it is a practical budget comparison, not evidence of converged RL
+or exact published reproduction. Feasibility outcomes were seen before selecting
+this two-method scope; the report records that provenance.
+
+## Completed 24-hour seed-0 feasibility pass
 
 After the resource pilots, run **nine fresh jobs**, rather than the full
 120-job campaign: 3d4, 3d6 and the explicitly proposed 3d8 configuration, each
@@ -101,9 +170,9 @@ Updated `analyse.py` reports trajectories, training counts, full-search bounds
 and the latest nonempty greedy evaluation within budget. Empty cutoff records
 are excluded, genuine zero-contact outcomes retained and raw records preserved.
 It records the current analyser hash while verifying the original frozen bundle.
-The full submission command below still creates all 120 tasks; continuing
-with the remaining 111 requires explicit exclusions and combined analysis
-across the frozen bundles to avoid duplicating these seed-0 observations.
+The generic full submission below still creates all 120 legacy three-method
+tasks. Use the current two-method continuation above for the main experiment;
+it excludes the six completed CP-SAT/RL observations and combines their records.
 
 ## Methods and scientific scope
 
@@ -278,7 +347,8 @@ Slurm reported 10.92G peak memory. One four-thread 3d6 cell remained partial
 after recording all five episode timings. This is enough to end broad resource
 profiling; the next recommendation is a separate 24-hour seed-0 learning and
 memory feasibility pass before freezing the five-seed campaign. No such pass
-has been submitted here. The full-run templates still request 32 GiB.
+was submitted by the resource reporter. That seed-0 pass has since completed,
+as recorded above. The full-run templates still request 32 GiB.
 To repeat the corrected **RL pilot only**, keep the completed CP pilot and use
 a fresh output directory:
 

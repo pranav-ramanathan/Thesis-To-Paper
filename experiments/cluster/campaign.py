@@ -46,11 +46,13 @@ def verify(campaign):
 
 
 def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=False,
-           model_dir=None, threads=8, pilot_arm='rl', stage='full'):
-    if stage not in ('full', 'seed0-feasibility'):
-        raise ValueError('Stage must be full or seed0-feasibility')
-    if stage == 'seed0-feasibility' and (mode != 'campaign' or include_decisionboost):
-        raise ValueError('Seed-0 feasibility is a primary campaign only; no optional DecisionBoost jobs')
+           model_dir=None, threads=8, pilot_arm='rl', stage='full', reuse_campaign=None):
+    if stage not in ('full', 'seed0-feasibility', 'rl-vs-cp-sat'):
+        raise ValueError('Unknown campaign stage')
+    if stage != 'full' and (mode != 'campaign' or include_decisionboost):
+        raise ValueError('Selected stage is a primary campaign only; no optional DecisionBoost jobs')
+    if reuse_campaign and stage!='rl-vs-cp-sat':
+        raise ValueError('Reuse is supported only for the RL versus CP-SAT stage')
     if not 0 < run_hours <= 239.75:
         raise ValueError('run-hours must be > 0 and <= 239.75 (save/termination reserve)')
     if not 1 <= threads <= 96 or not 1 <= concurrency <= 125:
@@ -74,18 +76,18 @@ def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=Fal
             if file_hash(Path(model_dir) / name) != digest:
                 raise ValueError(f'Encoder file changed: {name}')
         model_files=pin['files']
-    out = Path(out).resolve()
-    out.mkdir(parents=True, exist_ok=False)
-    shutil.copytree(HERE, out / 'bundle', ignore=shutil.ignore_patterns('__pycache__', '.testdeps'))
-    (out / 'logs').mkdir()
-    (out / 'tasks').mkdir()
-    protocol = json.loads((out / 'bundle/protocol.json').read_text())
+    protocol = json.loads((HERE / 'protocol.json').read_text())
     protocol['threads'] = threads
     if stage == 'seed0-feasibility':
         protocol['seeds'] = [0]
         protocol['configurations'] = {seq_id: protocol['configurations'][seq_id]
                                       for seq_id in ('3d4', '3d6', '3d8')}
-    save(out / 'bundle/protocol.json', protocol)
+    methods=('cp_sat','rl') if stage=='rl-vs-cp-sat' else ('cp_sat','rl','rl_cp_sat')
+    reused=[]; inherited_deadline=None
+    if reuse_campaign:
+        from reuse import collect
+        reused,inherited_deadline=collect(reuse_campaign,protocol=protocol,run_seconds=run_hours*3600,
+                                         threads=threads,methods=methods,code_directory=HERE)
     if mode == 'pilot':
         tasks = [dict(arm='pilot', seed=0, seq_id=f'{pilot_arm}_resources')]
         deadline_seconds, run_seconds = 864000, 3000
@@ -94,12 +96,25 @@ def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=Fal
         tasks = [dict(arm=arm, seed=seed, seq_id=seq_id)
                  for seed in protocol['seeds']
                  for seq_id in protocol['configurations']
-                 for arm in ('cp_sat', 'rl', 'rl_cp_sat')]
+                 for arm in methods]
+        expected_primary_tasks=len(tasks)
+        imported_keys={(r['task']['arm'],r['task']['seed'],r['task']['seq_id']) for r in reused}
+        tasks=[t for t in tasks if (t['arm'],t['seed'],t['seq_id']) not in imported_keys]
         if include_decisionboost:
             for seed in reversed(protocol['seeds']):
                 tasks.insert(seed * (len(tasks) // 5), dict(arm='decisionboost', seed=seed, seq_id='fresh_corpus'))
         deadline_seconds, run_seconds = 864000, run_hours * 3600
     now = time.time()
+    deadline_epoch=min(now+deadline_seconds,inherited_deadline) if inherited_deadline else now+deadline_seconds
+    if reused and now+run_seconds+300>=deadline_epoch:
+        raise ValueError('Original campaign deadline leaves insufficient time for one complete new run')
+    if not tasks: raise ValueError('All requested tasks are already complete; no submission is needed')
+    out = Path(out).resolve()
+    out.mkdir(parents=True, exist_ok=False)
+    shutil.copytree(HERE, out / 'bundle', ignore=shutil.ignore_patterns('__pycache__', '.testdeps'))
+    (out / 'logs').mkdir()
+    (out / 'tasks').mkdir()
+    save(out / 'bundle/protocol.json', protocol)
     allocation_time_limit_seconds = 3600 if mode=='pilot' else 864000
     try:
         revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=HERE,
@@ -107,19 +122,24 @@ def create(out, *, mode, run_hours=24, concurrency=24, include_decisionboost=Fal
     except (OSError, subprocess.CalledProcessError):
         revision = None
     manifest = dict(schema_version=1, mode=mode, stage=stage, created_epoch=now,
-                    deadline_epoch=now + deadline_seconds,
-                    deadline_utc=datetime.fromtimestamp(now + deadline_seconds, timezone.utc).isoformat(),
+                    deadline_epoch=deadline_epoch,
+                    deadline_utc=datetime.fromtimestamp(deadline_epoch, timezone.utc).isoformat(),
                     deadline_scope=('Pilot queue allowance; each allocation requests one hour and computes up to 50 minutes'
-                                    if mode=='pilot' else 'Entire campaign from creation, includes queue time; no extension'),
+                                    if mode=='pilot' else 'Original reused campaign deadline; no reset or extension'
+                                    if reused else 'Entire campaign from creation, includes queue time; no extension'),
                     run_seconds=run_seconds, concurrency=concurrency, threads=threads,
                     allocation_time_limit_seconds=allocation_time_limit_seconds,
                     pilot_arm=pilot_arm if mode=='pilot' else None,
                     tasks=tasks, model_dir=model_dir, model_files=model_files, git_revision=revision,
+                    primary_methods=list(methods),reused_tasks=reused,
+                    expected_cpu_model=reused[0]['cpu_model'] if reused else None,
+                    expected_primary_tasks=expected_primary_tasks if mode=='campaign' else 0,
+                    planned_new_cpu_hours=threads*len(tasks)*run_seconds/3600,
                     python_executable=sys.executable,
                     bundle_sha256=hashes(out / 'bundle'),
                     maximum_concurrent_allocated_cpus=threads * min(concurrency, len(tasks)),
                     reserved_cpu_hours_ceiling=threads * min(concurrency, len(tasks))
-                                              * min(deadline_seconds, allocation_time_limit_seconds) / 3600,
+                                              * min(deadline_epoch-now, allocation_time_limit_seconds) / 3600,
                     comparison='Primary common CPU domain and per-run elapsed budget; DecisionBoost is a separate call-budget study')
     save(out / 'campaign.json', manifest)
     (out/'campaign.sha256').write_text(file_hash(out/'campaign.json')+'\n')
@@ -134,13 +154,16 @@ if __name__ == '__main__':
     p.add_argument('--concurrency', type=int, default=24)
     p.add_argument('--threads', type=int, default=8)
     p.add_argument('--pilot-arm', choices=['rl', 'cp_sat'], default='rl')
-    p.add_argument('--stage', choices=['full', 'seed0-feasibility'], default='full')
+    p.add_argument('--stage', choices=['full', 'seed0-feasibility', 'rl-vs-cp-sat'], default='full')
+    p.add_argument('--reuse-campaign', type=Path)
     p.add_argument('--include-decisionboost', action='store_true')
     p.add_argument('--model-dir', type=Path)
     args = p.parse_args()
     m = create(**vars(args))
     print(json.dumps(dict(directory=str(args.out.resolve()), tasks=len(m['tasks']),
+                          reused_tasks=len(m['reused_tasks']),expected_primary_tasks=m['expected_primary_tasks'],
                           deadline_utc=m['deadline_utc'], run_hours=m['run_seconds']/3600,
                           scheduler_request_hours=m['allocation_time_limit_seconds']/3600,
                           deadline_scope=m['deadline_scope'],
+                          planned_new_cpu_hours=m['planned_new_cpu_hours'],
                           reserved_cpu_hours_ceiling=m['reserved_cpu_hours_ceiling']), indent=2))

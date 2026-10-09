@@ -36,11 +36,19 @@ literature audit.
   controller, bounded CP teacher and verified feedback. Separate known witnessed
   repair gains from exact action values. Include fixed/static/random/cheap controls.
 
-## 3. Predeclared CPU campaign
+## 3. CPU comparison protocol and provenance
 
 Use a verified homogeneous Apocrita CPU selection. Keep primary methods' CPU
-allocation, common cube and elapsed budget fixed. Five seeds × eight benchmark
-strings × three methods gives **120 primary runs**. Exact benchmark lengths are
+allocation, common cube and elapsed budget fixed. The current main comparison
+is **CP-SAT versus RL**, with five seeds × eight benchmark strings × two methods
+giving **80 observations**. Six completed seed-0 observations are reused under
+the unchanged 24-hour protocol; the continuation queues **74 new tasks** at
+up to 24 concurrent allocations, eight cores/32 GiB each. The inherited
+16 October 2026 20:38:37 UTC deadline is not reset. Four waves need about four
+compute days before queue delays, with 14,208 additional allocated CPU-hours
+before saving overhead. Fixed-hybrid results are secondary feasibility evidence.
+The earlier generic three-method/120-run protocol remains available separately.
+Exact benchmark lengths are
 20, 24, 25, 36, 46, 48, 50 and 58, not the earlier generated length-eight corpus.
 The saved protocol lacks a 3d8 architecture; its proposed row stays labelled.
 
@@ -48,8 +56,10 @@ Run separate disposable one-hour CP-SAT and RL resource pilots first. Apocrita's
 about scheduler requests, not the scientific budget. Request **ten days** for
 campaign jobs and apply a separate configurable cutoff, provisionally **24 hours
 per primary run**. Inspect the CPU pilot before selecting that budget; freeze
-the choice before viewing final comparison outcomes. An absolute campaign
-deadline expires ten days after preparation, including queue time.
+the choice for prospective runs. The feasibility seed-0 scores were viewed
+before selecting the two-method scope; disclose their provenance rather than
+claiming all 80 observations were unseen confirmatory data. An absolute campaign
+deadline expires ten days after original preparation, including queue time.
 
 The reported Apocrita resource pilots now support eight cores among the tested
 1/2/4/8 counts. The corrected RL run checked all eight configurations at eight
@@ -78,9 +88,12 @@ runs were incomplete (roughly 2.4–10.0% of the 200,000-episode schedule), with
 final epsilon approximately 0.61–0.89 and weak sampled greedy policies.
 Full-search solver statuses were FEASIBLE, with loose bounds rather than
 optimality proofs. Empty deadline evaluations must be excluded from policy
-summaries, while genuine zero-contact folds remain visible. Hold the remaining
-campaign pending latest usable evaluations and a bounded learning audit;
-retain the executed reference and distinguish any changed method explicitly.
+summaries, while genuine zero-contact folds remain visible. The user's selected
+continuation measures practical cold-start budget performance despite incomplete
+training. A static baseline audit documents the inherited unmasked Double-DQN
+bootstrap target; no correction is silently applied while reusing old runs.
+See [the baseline audit](experiments/cluster/BASELINE_AUDIT.md). Numerical learning
+diagnostics and any corrected variant remain separate future experiments.
 
 Record quality at one, two, twelve and twenty-four hours, training completion,
 greedy policy outcomes and best validated search folds separately. If the fixed

@@ -6,6 +6,7 @@ from pathlib import Path
 import statistics
 from campaign import file_hash, save, verify
 from geometry import contacts
+from reuse import task_directory, verify_imports
 
 
 def records(path):
@@ -20,11 +21,15 @@ def records(path):
 
 def analyse(directory):
     m=verify(directory)
+    verify_imports(m)
     rows=[]; witnesses=0; secondary=[]; errors=[]; offline=[]
     protocol=json.loads((directory/'bundle/protocol.json').read_text())
     timepoints=protocol['timepoints_seconds']
-    for i,task in enumerate(m['tasks']):
-        out=directory/'tasks'/f'{i:03d}_{task["arm"]}_{task["seq_id"]}_seed{task["seed"]}'
+    sources=[(i,task,task_directory(directory,i,task),str(directory),i,False)
+             for i,task in enumerate(m['tasks'])]
+    sources.extend((len(m['tasks'])+i,item['task'],task_directory(item['directory'],item['source_task'],item['task']),
+                    item['directory'],item['source_task'],True) for i,item in enumerate(m.get('reused_tasks',[])))
+    for i,task,out,source_campaign,source_task,reused in sources:
         launch=json.loads((out/'launch.json').read_text()) if (out/'launch.json').exists() else {}
         result=json.loads((out/'result.json').read_text()) if (out/'result.json').exists() else {}
         scores=[]; scopes=[]; cases=[]; evaluations=[]; last_episode=None; full_search_end=None
@@ -32,6 +37,8 @@ def analyse(directory):
         try:
             for event in records(out/'events.jsonl'):
                 if event['type']=='witness':
+                    if task['arm'] in ('cp_sat','rl','rl_cp_sat') and event['seq']!=protocol['configurations'][task['seq_id']]['sequence']:
+                        raise ValueError('Witness belongs to the wrong benchmark sequence')
                     value=contacts(event['seq'],event['positions'],len(event['seq'])//2)
                     if value!=event['contacts']: raise ValueError('Logged contacts disagree with independent count')
                     scores.append((event['elapsed_s'],value)); witnesses+=1
@@ -75,6 +82,8 @@ def analyse(directory):
             trajectory.append(dict(seconds=t,contacts=max(values) if values and covered else None,
                                    observed_contacts=max(values) if values else None,covered=covered))
         rows.append(dict(task=i,**task,status=launch.get('status','not_started'),
+                         reused=reused,source_campaign=source_campaign,source_task=source_task,
+                         source_task_directory=str(out),verification_valid=not any(e['task']==i for e in errors),
                          worker_status=result.get('status'),elapsed_s=elapsed,
                          best_contacts=max((score for _,score in scores),default=None),
                          full_cube_optimal=optimal,solver_scopes=scopes,trajectory=trajectory,
@@ -91,15 +100,16 @@ def analyse(directory):
                          truncated=launch.get('deadline_truncated',False)))
     summary=[]
     for seq_id in protocol['configurations']:
-        for arm in ('cp_sat','rl','rl_cp_sat'):
+        for arm in m.get('primary_methods',('cp_sat','rl','rl_cp_sat')):
             subset=[r for r in rows if r['seq_id']==seq_id and r['arm']==arm and not r['engineering_only']]
             at_budget=[]
             for r in subset:
+                if not r['verification_valid']: continue
                 t=m['run_seconds']
                 # Result means require the whole requested budget or an exact cube proof.
                 if r['elapsed_s']>=t-1 or r['full_cube_optimal']:
                     # Use the last valid witness at/before the budget, not post-cutoff saving time.
-                    out=directory/'tasks'/f'{r["task"]:03d}_{arm}_{seq_id}_seed{r["seed"]}'
+                    out=Path(r['source_task_directory'])
                     vals=[e['contacts'] for e in records(out/'events.jsonl') if e['type']=='witness' and e['elapsed_s']<=t]
                     if vals:at_budget.append(max(vals))
             summary.append(dict(seq_id=seq_id,arm=arm,requested_seeds=len(m['tasks']) and len(protocol['seeds']),
@@ -108,6 +118,7 @@ def analyse(directory):
                                 sd_contacts=statistics.stdev(at_budget) if len(at_budget)>1 else None))
     report=dict(schema_version=2,analyser_sha256=file_hash(Path(__file__)),deadline_utc=m['deadline_utc'],run_budget_s=m['run_seconds'],
                 independent_witnesses_checked=witnesses,verification_errors=errors,
+                new_tasks=len(m['tasks']),reused_tasks=len(m.get('reused_tasks',[])),
                 primary=summary,tasks=rows,decisionboost_cases=secondary,decisionboost_offline_costs=offline,
                 interpretation='Missing outcomes remain null. Historical MPS/published results are excluded. DecisionBoost is a separate call-budget study.')
     save(directory/'analysis.json',report)
@@ -121,6 +132,11 @@ def analyse(directory):
         val='—' if r['mean_contacts'] is None else f"{r['mean_contacts']:.2f}"
         sd='—' if r['sd_contacts'] is None else f"{r['sd_contacts']:.2f}"
         lines.append(f"| {r['seq_id']} | {r['arm']} | {r['seeds_with_valid_budget_result']}/{r['requested_seeds']} | {val} | {sd} |")
+    if m.get('stage')=='rl-vs-cp-sat':
+        lines.extend(['',f"RL versus CP-SAT: {len(rows)} planned observations ({len(m['tasks'])} new, {len(m.get('reused_tasks',[]))} reused).",
+                      'This compares best witnessed folds under equal cold-start CPU budgets, including RL training cost. Incomplete training is reported; no converged-policy comparison is claimed.',
+                      'Reused feasibility outcomes were seen before this two-method scope was selected. Each row records its source campaign and original task; no result is counted twice.',
+                      'The preserved reference uses an unmasked Double-DQN bootstrap argmax. This inherited limitation is documented in BASELINE_AUDIT.md; no silent algorithm correction is applied.'])
     if m.get('stage') == 'seed0-feasibility':
         lines.extend(['', 'Seed-0 feasibility only: one seed per method/sequence. These outcomes assess learning and sustained resource use; they do not establish a multi-seed method ranking.',
                       'The rl_cp_sat arm uses fixed repairs, not the learned DecisionBoost controller. No full campaign follows automatically.'])

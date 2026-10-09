@@ -79,6 +79,8 @@ def main():
             save(out/'launch.json',info); return
         if os.environ.get('SLURM_CPUS_PER_TASK') and int(os.environ['SLURM_CPUS_PER_TASK']) != manifest['threads']:
             raise ValueError('Allocated CPU count differs from frozen campaign')
+        if manifest.get('expected_cpu_model') and info.get('cpu_model')!=manifest['expected_cpu_model']:
+            raise ValueError('CPU model differs from the reused comparison results')
         if task['arm']=='decisionboost':
             for name,digest in manifest['model_files'].items():
                 if file_hash(Path(manifest['model_dir'])/name)!=digest:
