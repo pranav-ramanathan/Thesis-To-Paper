@@ -163,6 +163,77 @@ class ProtocolTests(unittest.TestCase):
             self.assertTrue(all(row['mean_contacts'] is None for row in r['primary']))
             self.assertTrue(all(row['seeds_with_valid_budget_result']==0 for row in r['primary']))
 
+    def test_live_logs_show_covered_timepoints_and_counters_without_final_means(self):
+        from analyse import analyse
+        with tempfile.TemporaryDirectory() as d:
+            out=Path(d)/'run';m=create(out,mode='campaign',stage='rl-vs-cp-sat')
+            index,task=next((i,t) for i,t in enumerate(m['tasks']) if t==dict(arm='rl',seed=0,seq_id='3d4'))
+            folder=out/'tasks'/f"{index:03d}_rl_3d4_seed0";folder.mkdir()
+            seq=json.loads((out/'bundle/protocol.json').read_text())['configurations']['3d4']['sequence']
+            fold=[[i%2 if (i//2)%2==0 else 1-i%2,i//2,0] for i in range(len(seq))]
+            score=contacts(seq,fold,len(seq)//2)
+            save(folder/'launch.json',dict(status='running',start_epoch=time.time()-50000))
+            events=[dict(type='witness',elapsed_s=100,seq=seq,positions=fold,contacts=score),
+                    dict(type='episode',elapsed_s=45000,episode=12345,updates=12300,epsilon=.7)]
+            # The reader must ignore an incomplete write at the current log tail.
+            raw=''.join(json.dumps(e)+'\n' for e in events)+'{"type":'
+            (folder/'events.jsonl').write_text(raw)
+            before=__import__('campaign').hashes(out/'bundle')
+            r=analyse(out);row=r['tasks'][index]
+            trajectory={t['seconds']:t for t in row['trajectory']}
+            self.assertEqual(row['elapsed_s'],0)
+            self.assertEqual(row['observed_elapsed_s'],45000)
+            self.assertEqual(trajectory[43200]['contacts'],score)
+            self.assertIsNone(trajectory[86400]['contacts'])
+            self.assertEqual(row['episode'],12345)
+            self.assertEqual(row['updates'],12300)
+            self.assertEqual(row['counters_source'],'latest_episode_log')
+            summary=next(s for s in r['primary'] if s['seq_id']=='3d4' and s['arm']=='rl')
+            self.assertEqual(summary['seeds_with_valid_budget_result'],0)
+            self.assertIsNone(summary['mean_contacts'])
+            text=(out/'report.md').read_text()
+            self.assertIn('Recorded progress for unfinished runs',text)
+            self.assertIn(f'| 3d4 | 0 | rl | running | 12.500 | {score} | 12345 | 12300 |',text)
+            self.assertEqual((folder/'events.jsonl').read_text(),raw)
+            self.assertEqual(__import__('campaign').hashes(out/'bundle'),before)
+            # An event after the budget does not create a final budget result.
+            (folder/'events.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in events)+
+                json.dumps(dict(type='checkpoint',elapsed_s=86405))+'\n')
+            r=analyse(out)
+            self.assertEqual(next(t for t in r['tasks'][index]['trajectory'] if t['seconds']==86400)['contacts'],score)
+            self.assertEqual(next(s for s in r['primary'] if s['seq_id']=='3d4' and s['arm']=='rl')['seeds_with_valid_budget_result'],0)
+
+    def test_running_solver_without_recent_logs_does_not_invent_timepoint_coverage(self):
+        from analyse import analyse
+        with tempfile.TemporaryDirectory() as d:
+            out=Path(d)/'run';create(out,mode='campaign',stage='rl-vs-cp-sat')
+            folder=out/'tasks/000_cp_sat_3d1_seed0';folder.mkdir()
+            save(folder/'launch.json',dict(status='running',start_epoch=time.time()-85000))
+            (folder/'events.jsonl').write_text(json.dumps(dict(type='solver_start',elapsed_s=10))+'\n')
+            row=analyse(out)['tasks'][0]
+            self.assertEqual(row['logged_elapsed_s'],10)
+            self.assertFalse(any(t['covered'] for t in row['trajectory']))
+
+    def test_final_means_use_only_the_verified_event_snapshot(self):
+        from analyse import analyse, records
+        with tempfile.TemporaryDirectory() as d:
+            out=Path(d)/'run';create(out,mode='campaign',stage='rl-vs-cp-sat')
+            folder=out/'tasks/000_cp_sat_3d1_seed0';folder.mkdir()
+            seq=json.loads((out/'bundle/protocol.json').read_text())['configurations']['3d1']['sequence']
+            fold=[[i%2 if (i//2)%2==0 else 1-i%2,i//2,0] for i in range(len(seq))]
+            score=contacts(seq,fold,len(seq)//2)
+            save(folder/'launch.json',dict(status='finished',total_elapsed_s=86400))
+            (folder/'events.jsonl').write_text(json.dumps(dict(type='witness',elapsed_s=100,seq=seq,positions=fold,contacts=score))+'\n')
+            scans=[]
+            def once(path):
+                if path==folder/'events.jsonl':
+                    scans.append(path)
+                    if len(scans)>1:raise AssertionError('Verified event snapshot was re-read')
+                yield from records(path)
+            with patch('analyse.records',side_effect=once):r=analyse(out)
+            self.assertEqual(len(scans),1)
+            self.assertEqual(next(s for s in r['primary'] if s['seq_id']=='3d1' and s['arm']=='cp_sat')['mean_contacts'],score)
+
     def test_fresh_corpus_excludes_all_prior_reversals(self):
         m=json.loads((HERE/'decisionboost_corpus.json').read_text())
         keys=[min(s,s[::-1]) for rows in m['splits'].values() for s in rows]

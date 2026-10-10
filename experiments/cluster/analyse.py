@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse
 import json
+import math
 from pathlib import Path
 import statistics
 from campaign import file_hash, save, verify
@@ -33,9 +34,13 @@ def analyse(directory):
         launch=json.loads((out/'launch.json').read_text()) if (out/'launch.json').exists() else {}
         result=json.loads((out/'result.json').read_text()) if (out/'result.json').exists() else {}
         scores=[]; scopes=[]; cases=[]; evaluations=[]; last_episode=None; full_search_end=None
-        empty_evaluations=0
+        empty_evaluations=0; logged_elapsed=0
         try:
             for event in records(out/'events.jsonl'):
+                when=event.get('elapsed_s',0)
+                if not isinstance(when,(int,float)) or not math.isfinite(when) or when<0:
+                    raise ValueError('Invalid event elapsed time')
+                logged_elapsed=max(logged_elapsed,when)
                 if event['type']=='witness':
                     if task['arm'] in ('cp_sat','rl','rl_cp_sat') and event['seq']!=protocol['configurations'][task['seq_id']]['sequence']:
                         raise ValueError('Witness belongs to the wrong benchmark sequence')
@@ -74,21 +79,30 @@ def analyse(directory):
                     learned_minus_static=learned-case['arms']['static_length']['final_contacts'],
                     online_s=case['arms']['learned']['online_s'],cold_contacts=case['cold_contacts']))
         elapsed=launch.get('total_elapsed_s',result.get('elapsed_s',0))
+        # A running launch has no final duration. Complete log records establish
+        # interim coverage, but never qualify a run for the final budget means.
+        observed_elapsed=max(elapsed,logged_elapsed)
+        budget_scores=[score for when,score in scores if when<=m['run_seconds']]
+        budget_best=max(budget_scores,default=None)
         optimal=result.get('full_cube_optimal',False)
         trajectory=[]
         for t in timepoints:
             values=[score for when,score in scores if when<=t]
-            covered=elapsed>=t or optimal
+            covered=observed_elapsed>=t or optimal
             trajectory.append(dict(seconds=t,contacts=max(values) if values and covered else None,
                                    observed_contacts=max(values) if values else None,covered=covered))
         rows.append(dict(task=i,**task,status=launch.get('status','not_started'),
                          reused=reused,source_campaign=source_campaign,source_task=source_task,
                          source_task_directory=str(out),verification_valid=not any(e['task']==i for e in errors),
                          worker_status=result.get('status'),elapsed_s=elapsed,
+                         logged_elapsed_s=logged_elapsed,observed_elapsed_s=observed_elapsed,
                          best_contacts=max((score for _,score in scores),default=None),
+                         best_contacts_within_budget=budget_best,
                          full_cube_optimal=optimal,solver_scopes=scopes,trajectory=trajectory,
-                         episode=result.get('episode'),training_complete=result.get('training_complete'),
-                         updates=result.get('updates'),repairs=result.get('repairs'),
+                         episode=result.get('episode',(last_episode or {}).get('episode')),
+                         training_complete=result.get('training_complete'),
+                         updates=result.get('updates',(last_episode or {}).get('updates')),repairs=result.get('repairs'),
+                         counters_source='final_result' if result else 'latest_episode_log',
                          last_episode_within_budget=last_episode,
                          evaluations_within_budget=evaluations,
                          first_greedy_evaluation=evaluations[0] if evaluations else None,
@@ -108,15 +122,15 @@ def analyse(directory):
                 t=m['run_seconds']
                 # Result means require the whole requested budget or an exact cube proof.
                 if r['elapsed_s']>=t-1 or r['full_cube_optimal']:
-                    # Use the last valid witness at/before the budget, not post-cutoff saving time.
-                    out=Path(r['source_task_directory'])
-                    vals=[e['contacts'] for e in records(out/'events.jsonl') if e['type']=='witness' and e['elapsed_s']<=t]
-                    if vals:at_budget.append(max(vals))
+                    # Reuse the independently verified snapshot. Re-reading an
+                    # active log here could include new, unchecked witnesses.
+                    if r['best_contacts_within_budget'] is not None:
+                        at_budget.append(r['best_contacts_within_budget'])
             summary.append(dict(seq_id=seq_id,arm=arm,requested_seeds=len(m['tasks']) and len(protocol['seeds']),
                                 seeds_with_valid_budget_result=len(at_budget),
                                 mean_contacts=statistics.mean(at_budget) if at_budget else None,
                                 sd_contacts=statistics.stdev(at_budget) if len(at_budget)>1 else None))
-    report=dict(schema_version=2,analyser_sha256=file_hash(Path(__file__)),deadline_utc=m['deadline_utc'],run_budget_s=m['run_seconds'],
+    report=dict(schema_version=3,analyser_sha256=file_hash(Path(__file__)),deadline_utc=m['deadline_utc'],run_budget_s=m['run_seconds'],
                 independent_witnesses_checked=witnesses,verification_errors=errors,
                 new_tasks=len(m['tasks']),reused_tasks=len(m.get('reused_tasks',[])),
                 primary=summary,tasks=rows,decisionboost_cases=secondary,decisionboost_offline_costs=offline,
@@ -140,7 +154,21 @@ def analyse(directory):
     if m.get('stage') == 'seed0-feasibility':
         lines.extend(['', 'Seed-0 feasibility only: one seed per method/sequence. These outcomes assess learning and sustained resource use; they do not establish a multi-seed method ranking.',
                       'The rl_cp_sat arm uses fixed repairs, not the learned DecisionBoost controller. No full campaign follows automatically.'])
+    active=[row for row in rows if row['status']=='running' and row['arm'] in ('cp_sat','rl','rl_cp_sat') and not row['engineering_only']]
+    if active:
+        lines.extend(['', '## Recorded progress for unfinished runs', '',
+                      'Launch status comes from saved files, not a live Slurm query. Logged hours are the latest complete event timestamp and can lag current runtime, especially during solver search. Best contacts are independently verified witnesses within the budget, not greedy-policy means. These runs are excluded from final averages until final timing or an optimality proof is saved.', '',
+                      '| Sequence | Seed | Method | Launch status | Latest logged hour | Best contacts so far | Episodes | Updates |',
+                      '|---|---:|---|---|---:|---:|---:|---:|'])
+        for row in active:
+            best=row['best_contacts_within_budget'] if row['verification_valid'] else None
+            cells=[row['seq_id'],str(row['seed']),row['arm'],row['status'],f"{row['logged_elapsed_s']/3600:.3f}",
+                   str(best) if best is not None else '—',
+                   str(row['episode']) if row['episode'] is not None else '—',
+                   str(row['updates']) if row['updates'] is not None else '—']
+            lines.append('| '+' | '.join(cells)+' |')
     lines.extend(['', '## Best witnessed contacts over time', '',
+                  'Timepoints use elapsed coverage established by saved results or complete event logs. A dash can mean the logs have not yet established coverage; it does not mean zero contacts. Unfinished runs remain excluded from final means.', '',
                   '| Sequence | Seed | Method | 1h | 2h | 12h | 24h |', '|---|---:|---|---:|---:|---:|---:|'])
     for row in rows:
         if row['arm'] not in ('cp_sat','rl','rl_cp_sat') or row['engineering_only']: continue
@@ -149,7 +177,7 @@ def analyse(directory):
         lines.append(f"| {row['seq_id']} | {row['seed']} | {row['arm']} | {' | '.join(values)} |")
     lines.extend(['', '## RL training and greedy policy diagnostics', '',
                   'Latest greedy evaluations use the last nonempty evaluation completed within the compute budget. Empty deadline evaluations are excluded; an evaluation with attempted but incomplete folds remains visible. A zero contact score on completed folds remains zero.',
-                  'Greedy rollouts of one policy are not independent training seeds. Episode/update totals are final worker counters; epsilon uses the latest episode event within the budget.', '',
+                  'Greedy rollouts of one policy are not independent training seeds. Episode/update totals use final worker counters when available, otherwise the latest episode log within the budget; epsilon uses the latest episode event within the budget.', '',
                   '| Sequence | Seed | Method | Episodes | Updates | Epsilon | Repairs | First greedy mean | Latest greedy mean | Complete / attempted | Latest eval hour | Empty eval records |',
                   '|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|'])
     def value(v): return '—' if v is None else str(v)

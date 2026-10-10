@@ -102,7 +102,14 @@ HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 \
 
 The report includes final means/SD with five-seed coverage, per-run trajectories,
 training counts/epsilon, latest usable greedy evaluations, full-search bounds,
-and original source paths for reused observations. A zero score is retained;
+and original source paths for reused observations. While jobs run, it also shows
+the latest logged runtime, verified best contacts and logged episode/update counts.
+Interim timepoints use coverage established by complete event logs; a solver that
+has not emitted a recent event can still show missing timepoints. Launch status
+is read from saved files: use `squeue`/`sacct` for current scheduler status.
+Live logs never qualify unfinished runs for final budget averages. Final means
+use the same independently verified log snapshot, without re-reading growing
+logs for unchecked new witnesses. A zero score is retained;
 missing/incomplete outcomes remain missing. The inherited unmasked Double-DQN
 target is documented in [BASELINE_AUDIT.md](BASELINE_AUDIT.md). This continuation
 preserves that project reference and its training schedule to retain comparable
