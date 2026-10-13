@@ -57,7 +57,8 @@ def validate_checkpoint(saved, data_hash):
         raise ValueError('Checkpoint has not completed validation selection')
 
 
-def evaluate_sequence(row, method, seed, seconds, threads, checkpoint=None, batch_size=8, data_hash=None):
+def evaluate_sequence(row, method, seed, seconds, threads, checkpoint=None, batch_size=8,
+                      data_hash=None, checkpoint_validator=validate_checkpoint):
     start = time.monotonic()
     deadline = start + seconds
     sequence = row['sequence']
@@ -106,7 +107,7 @@ def evaluate_sequence(row, method, seed, seconds, threads, checkpoint=None, batc
             from model import Policy, sample
             torch.set_num_threads(threads)
             saved = torch.load(checkpoint, map_location='cpu', weights_only=False)
-            validate_checkpoint(saved, data_hash)
+            checkpoint_validator(saved, data_hash)
             policy = Policy(saved['model_config'])
             policy.load_state_dict(saved['model_state'])
             policy.eval()

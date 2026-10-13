@@ -4,6 +4,11 @@ Status: implementation and validation pilot, 13 October 2026. This is a new
 experiment; none of the previous per-sequence attention-DQN results are results
 for this policy. No production campaign follows automatically.
 
+The authorized follow-up to the completed first pilot is now specified in
+[ALLOCATION_PLAN.md](ALLOCATION_PLAN.md): three seeds, two-hour training lineages,
+shared PatternBoost prefixes, and actual before/after-RL validation endpoints.
+It supersedes the provisional subsequent-study allocation below.
+
 ## Question and decision
 
 Does training a single variable-length policy on diverse elite folds, then

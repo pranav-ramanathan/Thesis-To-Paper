@@ -10,6 +10,44 @@ PatternBoost only, CP-SAT cloning, PatternBoost → RL and CP-SAT data → RL. I
 also runs greedy and CP-SAT validation controls. It does **not** evaluate the
 eight public benchmark strings or the new synthetic final test set.
 
+## Next pilot: two-hour training allocation
+
+The [allocation pilot](ALLOCATION_PLAN.md) compares PatternBoost for two hours,
+PatternBoost 60 minutes → RL 60 minutes, PatternBoost 90 minutes → RL 30 minutes,
+and RL from scratch for two hours, with three seeds. Shared pretraining states
+include optimizer, random states and elite pools. Actual pre-RL and post-RL
+endpoints are evaluated on all 16 validation strings, separately from the
+earlier pilot's selected-checkpoint results.
+
+```bash
+cd /data/home/ah23335/Thesis-To-Paper
+git pull --ff-only
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/allocation_pilot.sh "$PWD/.cluster-runs/policy_allocation_2h_01"
+```
+
+This submits four arrays of three tasks each, with dependencies connecting each
+RL continuation to its matching PatternBoost seed. Each task requests **4 EHC
+cores and 16 GiB**. Allow approximately **four hours and ten minutes plus queue
+time and overhead** for the longest dependency path. END/FAIL email requests
+use the account destination, or supply `HP_MAIL_USER` explicitly. No final test
+or later campaign runs automatically. A fresh directory is required.
+
+```bash
+squeue -u "$USER"
+sacct -X -j "$(cat .cluster-runs/policy_allocation_2h_01/job_ids.txt)" --format=JobID,State,Elapsed,ExitCode
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/allocation_report.sh "$PWD/.cluster-runs/policy_allocation_2h_01"
+```
+
+The dependent arrays initially show `Dependency`; independent tasks may wait
+for resources or priority. The report can be generated before completion and
+keeps incomplete tasks visible. Save detailed accounting after completion:
+
+```bash
+sacct -j "$(cat .cluster-runs/policy_allocation_2h_01/job_ids.txt)" --units=G --format=JobID,State,Elapsed,AllocCPUS,TotalCPU,MaxRSS,ReqMem > .cluster-runs/policy_allocation_2h_01/accounting.txt
+```
+
+The original 20-minute pilot and its collection commands remain below.
+
 ## Run the Apocrita pilot
 
 From an Apocrita login shell, using the already installed cluster environment:

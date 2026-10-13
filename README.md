@@ -17,6 +17,9 @@ tests PatternBoost and CP-SAT pretraining followed by RL on the same Transformer
 Its [prospective plan](experiments/folding_policy/PLAN.md) starts with a bounded
 validation-only Apocrita pilot; final benchmark evaluation is disabled in that
 pilot. This policy generates folds independently at inference.
+The next [two-hour allocation pilot](experiments/folding_policy/ALLOCATION_PLAN.md)
+uses shared pretraining to compare 60:60 and 90:30 PatternBoost/RL allocations
+with two-hour single-stage controls, over three seeds.
 
 The earlier laptop manuscript is preserved in
 [archive/paper_laptop_draft_20261006.tex](archive/paper_laptop_draft_20261006.tex).

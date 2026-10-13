@@ -3,6 +3,31 @@
 Date: 13 October 2026. These are disposable engineering checks, not scientific
 method-comparison results. Neither final test partition was evaluated.
 
+## Follow-up allocation pilot verification
+
+The full package now passes **55 tests in 24.237 seconds** using the documented
+root-level discovery command. Added checks cover byte-identical model/Adam/RNG
+continuation after save/reload, restored elite pools, both 60:60 and 90:30 branch
+paths, altered parent rejection, fixed-endpoint versus selected-checkpoint
+evaluation, all-16 validation coverage, paired negative changes, source freezing,
+matching-seed array dependencies, scheduler warning handling and partial
+submission failures. Bash syntax checks pass for all new submission/report files.
+
+An additional short integration used the production 64-wide, two-layer policy
+and full frozen dataset: PatternBoost with 4/6/8-second checkpoints, two RL
+continuations, and RL from scratch. All completed with positive updates.
+Standalone evaluation covered all 16 validation strings for every path at a
+disposable 0.25-second per-string cap, checking **222 witness records**. Such
+short inference caps deliberately expose startup/deadline handling; they do not
+estimate scientific performance or determine an allocation ratio. Artifacts
+are in `/tmp/hp-allocation-integrated-lrofp5kn` on the development machine.
+
+The allocation launcher also prepares and verifies a frozen twelve-task pilot
+without Slurm submission. The configured real budgets remain 120-minute final
+training lineages and 60-second inference per validation string and seed.
+Complete code and package metadata are frozen again on Apocrita at submission.
+The original 27-test pilot verification record follows for provenance.
+
 ## Implementation checks
 
 The combined suite passed **27 tests**:
