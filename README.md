@@ -12,6 +12,12 @@ sequences, five seeds and two methods under 24-hour CPU budgets. CP-SAT leads
 on six sequences and ties RL on the two shortest. Reported final results and
 their provenance are in [experiments/cluster/results/](experiments/cluster/results/README.md).
 
+The new [variable-length policy experiment](experiments/folding_policy/README.md)
+tests PatternBoost and CP-SAT pretraining followed by RL on the same Transformer.
+Its [prospective plan](experiments/folding_policy/PLAN.md) starts with a bounded
+validation-only Apocrita pilot; final benchmark evaluation is disabled in that
+pilot. This policy generates folds independently at inference.
+
 The earlier laptop manuscript is preserved in
 [archive/paper_laptop_draft_20261006.tex](archive/paper_laptop_draft_20261006.tex).
 The `thesis/` directory is the dissertation and is excluded from this work.

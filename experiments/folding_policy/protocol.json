@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "stage": "validation-only-engineering-pilot",
+  "model": {"width": 64, "heads": 4, "layers": 2, "dropout": 0.0},
+  "training": {
+    "batch_size": 8,
+    "group_size": 8,
+    "learning_rate": 0.0003,
+    "pretrain_fraction": 0.5,
+    "data_fraction": 0.25,
+    "elite_size": 8,
+    "cp_seconds": 2.0,
+    "validation_fraction": 0.05,
+    "validation_checkpoints": 3,
+    "validation_folds_per_sequence": 2,
+    "trap_penalty": -10.0,
+    "grpo_clip": 0.2,
+    "grpo_epochs": 1
+  },
+  "conditions": ["rl_scratch", "patternboost", "cp_bc", "patternboost_rl", "cp_rl"],
+  "seeds": [0, 1],
+  "train_seconds_per_condition_seed": 1200,
+  "inference_seconds_per_sequence_seed": 60,
+  "threads": 4,
+  "memory_gib": 16,
+  "array_concurrency": 10,
+  "slurm_minutes": 45,
+  "domain": "3D cubic lattice; unit axis bonds; no repeated sites; nonconsecutive HH Manhattan-distance-one contacts; origin and +x first bond; abs(coordinate)<=floor(n/2)",
+  "final_test_enabled": false,
+  "automatic_extension": false
+}

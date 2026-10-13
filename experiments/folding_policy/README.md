@@ -1,0 +1,111 @@
+# PatternBoost → RL: standalone variable-length HP folding policy
+
+This package implements the validation pilot in [PLAN.md](PLAN.md). One small
+Transformer is reused across pretraining and RL; at inference it generates folds
+without solver repair. It is separate from the historical per-sequence DQN
+campaign and does not modify its code or results.
+
+The pilot runs all five learned conditions with two seeds: RL from scratch,
+PatternBoost only, CP-SAT cloning, PatternBoost → RL and CP-SAT data → RL. It
+also runs greedy and CP-SAT validation controls. It does **not** evaluate the
+eight public benchmark strings or the new synthetic final test set.
+
+## Run the Apocrita pilot
+
+From an Apocrita login shell, using the already installed cluster environment:
+
+```bash
+cd /data/home/ah23335/Thesis-To-Paper
+git pull --ff-only
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/pilot.sh "$PWD/.cluster-runs/policy_pilot_01"
+```
+
+This freezes source, sequence partitions, configuration and dependency metadata
+before submitting a **10-element Slurm array**, with **up to 10 concurrent
+tasks**, **4 EHC cores and 16 GiB each**, and a **45-minute scheduler limit**.
+Each learned condition/seed gets 20 minutes for data generation, training and
+checkpoint selection, then four one-minute validation searches. The first two
+tasks also run greedy and CP-SAT controls, so they take approximately 32 minutes
+plus startup/saving. Actual queue and runtime depend on cluster availability.
+The reservation ceiling is 30 allocated CPU-hours. No later campaign starts
+automatically.
+
+Email notifications request `END,FAIL`. To specify the destination explicitly,
+prefix the submission command with `HP_MAIL_USER="your-address@example.com"`.
+Delivery depends on the account's mail configuration and cluster service.
+
+For a preparation-only preview use a separate, new directory:
+
+```bash
+bash experiments/folding_policy/pilot.sh "$PWD/.cluster-runs/policy_preview_01" --dry-run
+```
+
+Existing output directories are rejected to preserve earlier runs. The dry run
+does not execute training. Dependencies are the existing cluster Torch/NumPy/
+OR-Tools environment; no new package installation is required on Apocrita.
+
+## Monitor and collect
+
+```bash
+squeue -u "$USER"
+cat .cluster-runs/policy_pilot_01/job_id.txt
+tail -n 30 .cluster-runs/policy_pilot_01/logs/*.out
+```
+
+Use the printed array job ID for accounting:
+
+```bash
+sacct -X -j JOB_ID --format=JobID,State,Elapsed,ExitCode,AllocCPUS
+sacct -j JOB_ID --format=JobID,State,Elapsed,TotalCPU,MaxRSS,ReqMem
+```
+
+Generate the validation report (also works while jobs are unfinished):
+
+```bash
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash <<'HP_POLICY_REPORT'
+source experiments/cluster/environment.sh
+"$HP_VENV_PATH/bin/python" experiments/folding_policy/report.py "$PWD/.cluster-runs/policy_pilot_01"
+cat .cluster-runs/policy_pilot_01/report.md
+HP_POLICY_REPORT
+```
+
+Inspect each task's `launch.json`, `training/result.json`, `training/events.jsonl`,
+and evaluation JSON. Best fold coordinates and improvement-time curves are
+saved for independent checking. A failure or incomplete validation is visible;
+it is not converted to a zero score or silently included as a successful run.
+Checkpoint/model/data hashes connect each inference result to its training run.
+
+The report exports `summary.csv` and `curves.csv`. To generate a standard
+PGFPlots figure source from independently verified per-run curves:
+
+```bash
+"$HP_VENV_PATH/bin/python" experiments/folding_policy/plot_curves.py "$PWD/.cluster-runs/policy_pilot_01"
+```
+
+Run that command in a shell where `environment.sh` has been sourced. Copy the
+generated `plots/inference_curves.tex` to a machine with TeX/PGFPlots and compile
+with `pdflatex inference_curves.tex`. Each line is one seed's cumulative
+inference time; it does not pool several runs against one CP-SAT run.
+
+## Local correctness tests
+
+Run in an existing Python environment with Torch and OR-Tools installed:
+
+```bash
+python -m unittest discover -s experiments/folding_policy -p 'test_*.py' -v
+bash -n experiments/folding_policy/pilot.sh experiments/folding_policy/pilot.sbatch
+```
+
+Pure partition/accounting checks also run without Torch; numerical tests require
+it. Tiny synthetic tests verify geometry, legal masking, variable lengths,
+symmetry transformations, gradients, stage continuity and frozen bundles.
+See [VALIDATION.md](VALIDATION.md) for the actual checks performed before release.
+These checks are engineering evidence, not measured learning superiority.
+
+`protocol.json` is the pilot's fixed configuration. `dataset.py` creates 160
+training, 16 validation, 80 novel test and 8 public benchmark sequence records.
+Only validation IDs 000, 005, 010 and 015 enter post-training pilot comparisons;
+they span lengths 24/40/60/72 and H fractions 0.25/0.40/0.60/0.75. Training
+checkpoint selection uses the separate validation partition. Public benchmark
+contact counts are literature context and never training rewards or selection
+targets.
