@@ -38,7 +38,8 @@
 \newcommand{\Cov}{\mathrm{Cov}}
 \newcommand{\Var}{\mathrm{Var}}
 
-\title{DecisionBoost for HP Protein Folding: Solver-Guided Decisions and CPU Comparisons}
+\title{CP-SAT and Attention-Based Deep Q-Learning for HP Protein Folding under CPU Time Budgets}
+\renewcommand{\shorttitle}{HP Folding under CPU Time Budgets}
 
 \author{
     \href{https://orcid.org/0009-0000-0270-7112}{\includegraphics[scale=0.06]{orcid.pdf}\hspace{1mm}Pranav Ramanathan} \\
@@ -54,7 +55,8 @@
 
 %%% Add PDF metadata to help others organize their library
 \hypersetup{
-    pdftitle={DecisionBoost for HP Protein Folding: Solver-Guided Decisions and CPU Comparisons},
+    hidelinks,
+    pdftitle={CP-SAT and Attention-Based Deep Q-Learning for HP Protein Folding under CPU Time Budgets},
     pdfsubject={cs.AI,q-bio.BM},
     pdfauthor={Pranav Ramanathan, Thomas Prellberg},
     pdfkeywords={HP model, protein folding, constraint programming, CP-SAT, reinforcement learning, deep Q-learning, lattice models}
@@ -65,27 +67,22 @@
 \maketitle
 
 \begin{abstract}
-We investigate cooperation between learned decisions and constraint optimisation for protein folding in the three-dimensional hydrophobic--polar lattice model. DecisionBoost combines a transformer fold constructor, a learned repair-region controller and bounded CP-SAT search; verified solver improvements supply feedback for learning. A completed local pilot motivates further evaluation but does not establish superiority over reinforcement learning or specialised HP solvers. This revised working draft specifies two distinct experiments: a CPU comparison of CP-SAT, an attention-based DQN and a fixed RL--CP-SAT hybrid on eight benchmark sequences, and a fresh-sequence replication of the learned DecisionBoost repair policy. The CPU campaign uses five seeds, a common declared lattice cube and a configurable elapsed budget, provisionally 24 hours per run. Jobs request Apocrita's ten-day scheduler ceiling while application guards stop computation earlier and enforce an absolute ten-day campaign deadline. Historical Apple MPS results, published reference values and new CPU measurements are kept separate. Cluster results remain pending; the paper's conclusions will follow the completed, independently checked trajectories rather than the available allocation.
+We compare general-purpose constraint optimisation and a project attention-based deep Q-learning baseline for three-dimensional hydrophobic--polar lattice folding under a common CPU allocation. Eight benchmark sequences of lengths 20--58 are evaluated with five seeds per method, eight CPU cores per run and an elapsed compute budget of up to 24 hours. The endpoint is the best independently verified complete fold found within the budget, including reinforcement-learning training cost. All 80 observations have valid budget coverage or an applicable declared-domain optimality proof; six observations reuse unchanged seed-0 feasibility runs. The cluster analyser checked 363,488 recorded fold witnesses without verification errors. Both methods reached 11 and 13 contacts on the two shortest sequences in every seed. CP-SAT obtained higher contact counts on all six remaining sequences in every paired seed; its one-hour incumbents also exceeded the corresponding 24-hour reinforcement-learning incumbents. CP-SAT proved optimality within the declared cube for the first three sequences. Longer reinforcement-learning workloads completed only part of their prescribed training schedule. These results demonstrate an advantage for CP-SAT under the tested cold-start CPU budget, rather than superiority over fully trained or GPU-accelerated reinforcement learning.
 \end{abstract}
 
-\keywords{HP model \and CP-SAT \and reinforcement learning \and decision models \and hybrid optimisation}
+\keywords{HP model \and CP-SAT \and reinforcement learning \and deep Q-learning \and CPU budgets}
 
-\paragraph{Working-draft status.}
-This manuscript has been restructured around a predeclared CPU campaign and a separate DecisionBoost replication. The cluster campaign has not been executed. The earlier laptop manuscript is preserved verbatim in \texttt{archive/paper\_laptop\_draft\_20261006.tex}; the dissertation is not part of this revision.
+\paragraph{Revision and evidence status.}
+This manuscript incorporates the completed Apocrita comparison reported on 13 October 2026. The 74 new array tasks all have reported Slurm state \texttt{COMPLETED} and exit code \texttt{0:0}; six unchanged feasibility observations supply the remaining results. Numerical tables are transcribed from the user-supplied cluster analyser output. The underlying remote task artifacts were not downloaded for this manuscript revision, so the reported cluster verification is not described as a separate local re-audit. The previous laptop draft is preserved in \texttt{archive/paper\_laptop\_draft\_20261006.tex}.
 
 \section{Introduction}
-Dill introduced the Hydrophobic-Polar (HP) lattice model in 1985~\cite{Dill1985}. This model collapses the twenty amino acid types into two classes: hydrophobic residues (H), which tend to avoid water, and polar residues (P), which interact more favourably with it. A sequence is then embedded as a self-avoiding walk on a lattice, with each residue occupying a distinct site and successive residues constrained to lie on adjacent lattice points~\cite{Lau1989}. Within this discrete setting, the objective is driven by hydrophobic contacts. In the simpler version of the model, the energy is defined by the number of non-consecutive H-H contacts, i.e., pairs of hydrophobic residues that are neighbours on the lattice but not adjacent along the chain. In effect, the optimisation target is to find an embedding that promotes hydrophobic clustering while respecting the self-avoidance and adjacency constraints.
+The hydrophobic--polar (HP) lattice model reduces a protein sequence to hydrophobic (H) and polar (P) residues~\cite{Dill1985,Lau1989}. Folding is a self-avoiding walk on a lattice, and the objective is to maximise non-consecutive H--H contacts. This discrete formulation provides a precisely checkable optimisation benchmark, while remaining substantially simpler than physical protein folding. The optimisation problem is NP-hard on the three-dimensional cubic lattice~\cite{BergerLeighton1998}.
 
-Even under this simplified lattice formulation, HP folding remains computationally demanding. \textit{Crescenzi et al.}\ proved in 1998 that the optimisation problem is NP-complete~\cite{Crescenzi1998}, so one should not expect a method that scales efficiently across all instances as the sequence length increases. The practical consequences show up fairly quickly: by the time sequences are in the 30 to 50 residue range, the set of valid self-avoiding conformations is already large enough that exhaustive enumeration stops being a useful point of comparison. That is part of the reason the HP model is used so often in combinatorial optimisation research: it is clean to specify, hard to solve, and easy to evaluate consistently across algorithms.
+Constraint-based approaches encode chain connectivity, self-avoidance and contact formation directly. Specialised tools such as CPSP-tools exploit precomputed hydrophobic cores and constraint satisfaction~\cite{CPSP2009}. Our implementation instead uses general-purpose OR-Tools CP-SAT to encode the complete conformation within a declared coordinate domain~\cite{GoogleORTools,Perron2023}. This supports independently checkable solutions, objective bounds and, when the search closes the gap, domain-scoped optimality proofs. It is not a claim to match the performance of specialised HP solvers.
 
-Given that hardness, much of the earlier computational literature relied on heuristics rather than exact optimisation. Simulated annealing became a common choice from the 1990s onward because it provides a straightforward mechanism for escaping local minima by occasionally accepting unfavourable moves early in the search~\cite{UngerMoult1993}. Genetic algorithms offered a different style of exploration, maintaining a population of candidate folds and gradually improving it through recombination and mutation operators~\cite{Krasnogor2002Multimeme}. Tabu search was also explored, discouraging cycling by remembering recent states. Ant colony optimisation took yet another approach, biasing construction using information carried over from successful searches~\cite{LeshPullMoves2003, StützleACO2005}.
+Attention-based deep Q-learning treats folding as a sequential decision problem~\cite{AttnDRL2504}. Its practical cost includes per-sequence training, model inference and exploratory search. A comparison under a common CPU budget therefore answers a different question from comparing fully trained neural policies with a solver or evaluating GPU training throughput. Both questions are useful, but their costs and endpoints must remain distinct.
 
-Constraint programming (CP) offers an alternative to heuristic search for HP folding. Chain connectivity, self-avoidance, and contact formation can all be encoded directly as folding constraints and then pruned through propagation~\cite{Barták2003}. Earlier CP tools, such as CPSP-tools, successfully tackled HP folding using specialised H-core databases and constraint satisfaction techniques~\cite{CPSP2009}. Google OR-Tools CP-SAT extends this approach by combining it with on-the-fly SAT-style clause learning and linear programming relaxation~\cite{Perron2023}. This can provide bounds on solution quality and, in favourable cases, certificates of optimality~\cite{GoogleORTools}. Large Neighbourhood Search is also supported, allowing solutions to be improved iteratively~\cite{Shaw1998}. Earlier domain-specific tools such as CPSP-tools~\cite{CPSP2009} solve HP folding by enumerating a precomputed database of optimal H-cores (connected lattice subgraphs of hydrophobic residues), then asking a constraint solver only whether the remaining polar residues can be threaded around each candidate core; the applicability of that offline precomputation depends on the lattice and model variant. Our CP-SAT formulation instead encodes the full folding problem directly, trading some HP-specific power for portability, reproducibility, and direct comparability against a learning-based baseline on the same benchmark family.
-
-
-Attention-based deep Q-learning treats folding as a sequential decision problem~\cite{AttnDRL2504}. Its training cost and solver search cost must be measured explicitly when comparing methods. A common CPU experiment answers a question about performance under a specified CPU allocation; it does not establish how GPU-accelerated RL would perform. An exact solver certifies optimality only when its status and bound establish that claim for the domain actually searched.
-
-Our central question is whether a learned model can identify folding decisions and repair regions for which bounded constraint search produces useful improvements. We distinguish this DecisionBoost hypothesis from the simpler fixed RL--CP-SAT hybrid. The contribution being tested is the learned HP-specific constructor/controller/solver cooperation, together with checked witnesses and reproducible cost accounting; we do not claim that hybrid optimisation itself is new.
+We ask which of CP-SAT and a preserved project attention-DQN baseline finds better verified folds within a 24-hour cold-start CPU budget. We evaluate eight fixed sequences with five seeds per method and a common eight-core allocation. Our contribution is this completed, reproducible budget comparison, together with training diagnostics, per-seed trajectories and domain-scoped solver statuses. We retain the project baseline and its limitations rather than silently modifying its learning algorithm after observing feasibility results. A fixed RL--CP-SAT feasibility study and a local learned-repair prototype provide exploratory context in Appendix~\ref{sec:exploratory}; neither is a learned-hybrid arm of the completed comparison.
 
 \section{Problem and Methods}
 \subsection{HP Folding and Independent Verification}
@@ -124,13 +121,13 @@ The primary CPU implementation uses one integer coordinate triple per residue an
 A fresh CP-only run searches the full declared cube without a heuristic hint. A repair fixes all coordinates outside its movable window, retains both boundary bonds and every self-avoidance constraint, and constrains the contact objective not to fall below the incumbent. The incumbent is retained on solver failure. \texttt{OPTIMAL} in a repair refers only to that neighbourhood; \texttt{OPTIMAL} in a full primary search refers only to the declared cube. Neither is automatically an unrestricted lattice proof. Restarted solves do not retain a previous solve's learned clauses.
 
 \subsection{Project Attention-DQN Baseline}\label{sec:lstma_approach}
-The bundled project reference uses an explicit $(n,5)$ observation: coordinates, residue type and normalised chain index, with sentinels for unplaced residues. A duelling transformer estimates five relative placement actions. Training retains the reference Double-DQN target, prioritised replay, Adam optimiser, FP32 precision, valid-action mask and at most one replay update per episode. The mask also retains its reference symmetry restrictions and one-step trap lookahead. Separate models are initialised for each sequence and seed. This source is associated with the attention-based RL comparison~\cite{AttnDRL2504}, but the frozen project configurations in Table~\ref{tab:cluster_configs} are not silently substituted for the published protocol.
+The bundled project reference uses an explicit $(n,5)$ observation: coordinates, residue type and normalised chain index, with sentinels for unplaced residues. A duelling transformer estimates five relative placement actions. Training retains the reference Double-DQN target, prioritised replay, Adam optimiser, FP32 precision, valid-action mask and at most one replay update per episode. The behaviour-action mask also retains its reference symmetry restrictions and one-step trap lookahead. The Double-DQN bootstrap chooses the next policy action with an unmasked argmax; this inherited limitation can select an action excluded by the environment mask. Its contribution to the observed learning outcomes has not been isolated. Separate models are initialised for each sequence and seed. This source is associated with the attention-based RL comparison~\cite{AttnDRL2504}, but the frozen project configurations in Table~\ref{tab:cluster_configs} are not silently substituted for the published protocol.
 
 The exploration schedule is fixed over 200,000 training episodes even when an elapsed-time cutoff truncates training. Periodic greedy evaluation restores the previous training mode in a \texttt{finally} block. If 200,000 episodes finish before the elapsed budget, training stops and the frozen policy continues sampling with exploration probability 0.05; those samples and their costs are identified separately. The old MPS execution backend is not used in the CPU campaign.
 
 \begin{table}[htbp]
 \centering
-\caption{Frozen project DQN configurations. The 3d8 row is proposed; it was absent from the saved project protocol. These are not asserted to reproduce every hyperparameter in the original RL paper.}\label{tab:cluster_configs}
+\caption{Frozen project DQN configurations. The 3d8 row was proposed for this campaign because it was absent from the saved project protocol. These are not asserted to reproduce every hyperparameter in the original RL paper.}\label{tab:cluster_configs}
 \begin{tabular}{lrrrrrr}
 \toprule
 Sequence & Length & Batch & Replay & Width & Heads & Layers \\
@@ -147,48 +144,137 @@ Sequence & Length & Batch & Replay & Width & Heads & Layers \\
 \end{tabular}
 \end{table}
 
-\subsection{Fixed RL--CP-SAT Hybrid}
-The fixed hybrid uses the same DQN training configuration and adds a bounded CP repair every 1,000 episodes once a valid complete incumbent exists. Ten movable residues alternate between a suffix and a central internal window, with a 30-second maximum repair allowance. Model construction, solving and verification are charged to the same elapsed budget as RL training. CP-generated folds update the search incumbent but do not modify the RL replay buffer. This arm tests simple cooperation; it is not the learned DecisionBoost policy.
+\section{Completed CPU Experiment}\label{sec:protocol}
+\subsection{Hardware, Software and Allocation}
+Runs used Apocrita's homogeneous EHC CPU pool, whose nodes contain AMD EPYC 9965 processors~\cite{ApocritaEHC}. Each run requested eight CPU cores and 32 GiB of RAM. Disposable resource pilots screened thread counts 1, 2, 4 and 8 on three representative configurations; eight was the fastest tested RL setting and was retained as the common allocation. This selection does not establish optimal scaling beyond eight cores. No GPU backend was used. The frozen environment specified Python 3.11, PyTorch 2.9.0, NumPy 2.3.4 and OR-Tools 9.15.6755. Task metadata record the host, CPU model, dependency versions, allocated cores, seeds, exact sequence strings and executed-source hashes.
 
-\subsection{DecisionBoost: Constructor, Controller and Solver}
-A separate experiment replicates the tested DecisionBoost architecture. A frozen, pinned ModernBERT-large encoder supplies full-sequence residue features. A fresh two-layer, width-64 transformer constructor receives those features together with explicit geometry and legal candidate features. A separate small transformer controller selects from suffix and internal repair windows of sizes 6, 10 and 16. CP-SAT produces verified improvements; elite improved folds provide constructor feedback, while observed repair gains supply controller targets. Tied maximal witnessed gains receive equal target mass. These targets describe bounded search outcomes, not exact action values or proofs that an unproductive action is infeasible.
+\subsection{Elapsed Budgets and Stopping Rules}
+The common scientific budget was 24 elapsed hours per sequence, seed and method, including model initialisation, RL training, search, periodic evaluation and in-run output work. CP-SAT could finish earlier only when it proved optimality for the full declared cube. A proof permits carrying its certified incumbent forward to later reporting thresholds; this is not additional computation. Post-cutoff checkpoint saving may add seconds to Slurm elapsed time and does not extend the score-acquisition budget.
 
-Each seed has fresh constructor/controller/optimiser states. The prescribed training schedule consists of 1,200 initial constructor steps, 256 solver-feedback steps and 1,200 controller steps. Evaluation freezes both learned models and compares learned repair selection with fixed, random, training-selected static and cheap-proposal controls. The pretrained encoder is reused; its original pretraining cost is unknown and is not described as zero. This is an open transformer decision prototype, not a Jev API call or an RL-trained folding policy.
+Jobs requested Apocrita's ten-day scheduler ceiling while application guards imposed the shorter scientific cutoff~\cite{ApocritaRuntime}. The inherited absolute campaign deadline was 16 October 2026 at 20:38:37 UTC, including queue time. It was not reset for the continuation. All requested observations acquired complete budget coverage or an applicable proof before that deadline. At most 24 array allocations ran concurrently. The 74 newly submitted tasks in array \texttt{30988549} all completed with exit code \texttt{0:0}; these statuses alone are not solver optimality certificates.
 
-\section{Predeclared Cluster Experiments}\label{sec:results}
-\subsection{Hardware and Reproducibility}
-Primary runs target a verified homogeneous Apocrita EHC CPU selection. Current documentation describes AMD EPYC 9965 nodes, with jobs limited to 96 cores each~\cite{ApocritaEHC}. The provisional allocation is eight cores and 32 GB per run; a disposable pilot screens CPU thread counts 1, 2, 4 and 8 on 3d4, 3d6 and 3d8 before the common allocation is frozen. Primary runs record host, CPU model, Python/library versions, allocated cores, seeds, exact HP strings and executed-source hashes. We do not infer EPYC throughput from Apple laptop measurements.
+\subsection{Design and Reuse Provenance}
+Eight strings of lengths 20, 24, 25, 36, 46, 48, 50 and 58 were evaluated with seeds 0--4 for both CP-SAT and RL, yielding 80 observations. Six seed-0 CP-SAT/RL runs on 3d4, 3d6 and 3d8 were reused from the completed feasibility campaign under unchanged configurations, numerical source, software versions, CPU model, allocation and compute budget. The continuation submitted the remaining 74 tasks. Manifest and artifact hashes identify imported observations, and no result is counted twice.
 
-\subsection{Scheduler Ceiling, Compute Cutoff and Campaign Deadline}
-Apocrita recommends one-hour requests for its short partitions or a 240-hour ceiling for standard partitions~\cite{ApocritaRuntime}. The supplied campaign scripts request ten days but apply a separate, configurable compute cutoff. The provisional scientific budget is 24 hours per primary sequence/seed/method run, not ten days of mandatory computation. The budget is selected after the pilot and remains common across the three primary methods.
+The six feasibility results were seen before the two-method campaign scope was selected. The full sample is therefore not described as entirely unseen confirmatory data. Fixed-hybrid feasibility observations were not added to the primary method means. Each RL observation initialised an independent sequence-specific model; no trained model was transferred between sequences.
 
-The complete campaign expires ten days after preparation/submission, including queue time. The worker stops launching work before that deadline; a separate parent process signals it at its per-run cutoff and forcibly terminates its own process group after a bounded saving grace. Checkpoints preserve networks, optimiser, replay priorities, update counts and random-number states. Explicit resume keeps the original deadline and charges previously consumed time; no automatic requeue or extension occurs. Late-starting and interrupted runs remain partial.
+\subsection{Endpoints and Verification}
+The primary endpoint is the best independently validated complete-fold contact count witnessed at or before the elapsed cutoff. We report one-, two-, twelve- and twenty-four-hour trajectories. Final aggregation requires full requested elapsed-budget coverage or an exact proof for the full declared cube; missing folds and partial runs are not assigned zero. Final tables show means and sample standard deviations over five seeds. Seed-wise paired differences are descriptive, without a claim of population-wide statistical significance.
 
-\subsection{Primary CPU Comparison}
-The eight frozen benchmark strings have lengths 20, 24, 25, 36, 46, 48, 50 and 58. Five seeds per method give 120 runs. The shared optimisation endpoint is the best independently validated complete contact count obtained by each elapsed-time threshold, with trajectories at one, two, twelve and twenty-four hours and additional thresholds when the chosen budget permits. Greedy RL evaluation and training completion are reported separately from the best search incumbent. Full declared-cube proofs can justify an early solver finish; other premature finishes do not acquire fictitious budget coverage.
+The cluster analyser reported 363,488 recorded witness checks and zero verification errors across the 80 observations. This number counts checked witness records, not necessarily distinct conformations. Independent validation establishes complete-fold geometry and contact counts; optimality is assessed separately from full-search solver status and objective bounds. Greedy policy evaluations, training episodes and update counts are separate endpoints. Empty evaluations caused by the deadline are excluded from policy summaries, while genuinely zero-contact completed folds remain zero.
 
-Final tables require coverage at the requested budget or an applicable exact-domain proof. We report missing-solution frequency, completed-run counts, paired per-seed differences, descriptive variability and uncertainty appropriate to five seeds. Queue time, allocated CPU-hours and checkpoint/output overhead are reported alongside elapsed compute time. A short-time outcome does not establish eventual learning convergence. Historical GPU results and published best-seed values provide context only and are not pooled into CPU means.
+\section{Results}\label{sec:results}
+\subsection{Final Best-Fold Quality}
+Table~\ref{tab:cpu_results} contains all five seeds for every method and sequence. CP-SAT and RL both reached 11 contacts on 3d1 and 13 on 3d2 in every seed. CP-SAT obtained higher contact counts on all six remaining sequences in every corresponding seed. The mean paired advantages on 3d3--3d8 were 2.6, 7.2, 17.0, 15.2, 18.8 and 23.8 contacts respectively. These results concern the tested strings, baseline and allocation, rather than a general sequence population.
 
-\subsection{Separate Fresh-Sequence DecisionBoost Replication}
-The optional five-pipeline experiment uses a new frozen corpus excluding reversal-equivalent sequences from previous local pilots and the benchmark set. It contains 128 training and 32 reserved validation sequences at lengths 16, 20, 28 and 36, and 72 test sequences, twelve each at lengths 16, 20, 28, 36, 48 and 58. Validation instances do not tune this fixed replication protocol. Every pipeline evaluates the same held-out strings.
+\begin{table}[htbp]
+\centering
+\caption{Best independently verified complete-fold contacts within a 24-hour compute budget, or an earlier full declared-cube optimality proof. Entries are mean $\pm$ sample standard deviation over five seeds; higher is better. Energy is negative contacts. Six unchanged seed-0 observations were reused from the feasibility campaign.}\label{tab:cpu_results}
+\begin{tabular}{lrrr}
+\toprule
+Sequence & Length & CP-SAT & Project attention DQN \\
+\midrule
+3d1 & 20 & $11.00\pm0.00$ & $11.00\pm0.00$ \\
+3d2 & 24 & $13.00\pm0.00$ & $13.00\pm0.00$ \\
+3d3 & 25 & $9.00\pm0.00$ & $6.40\pm0.55$ \\
+3d4 & 36 & $18.00\pm0.00$ & $10.80\pm0.84$ \\
+3d5 & 46 & $34.00\pm0.71$ & $17.00\pm1.58$ \\
+3d6 & 48 & $31.00\pm0.00$ & $15.80\pm1.10$ \\
+3d7 & 50 & $33.40\pm0.55$ & $14.60\pm0.55$ \\
+3d8 & 58 & $41.40\pm1.14$ & $17.60\pm0.89$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-This experiment preserves the original complete reachable coordinate domains, origin/+x anchoring and single-worker CP search caps. Each fresh test case uses sixteen constructor proposals and four one-second repairs per policy; cold CP uses one four-second search. Equal solver call caps do not imply equal elapsed time. Encoder loading/encoding, cheap archive generation, solver teaching, neural training, proposal inference and online repair costs are logged separately. These results answer the learned repair-policy question and must not be merged into the primary restricted-cube elapsed-budget table. The protocol finishes when its prescribed cases finish, even if the cluster allocation has time remaining.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{cpu_24h_contacts.pdf}
+\caption{Mean best witnessed contacts within the 24-hour compute budget for CP-SAT and the project attention-DQN baseline. Error bars show sample standard deviations across five seeds; they are not confidence intervals. Early full declared-cube proofs supply certified final incumbents.}\label{fig:cpu_contacts}
+\end{figure}
 
-\section{Existing Pilot Evidence and Pending Results}
-The completed laptop engineering screen found no candidate optimisation meeting its predeclared ten-percent throughput threshold. MPS was approximately 4.2--5.4 times faster than the best tested CPU setting for its three representative disposable workloads. This identifies a local bottleneck; it does not predict the cluster runtime or establish learning performance.
+\subsection{Time Trajectories and Solver Certificates}
+Table~\ref{tab:cpu_trajectories} reports the mean incumbent contacts at the four elapsed checkpoints.
 
-A separate completed local DecisionBoost pilot used five fresh pipelines and 72 held-out sequences per pipeline. Learned repair selection improved mean final contacts by approximately 0.61 over a training-selected static repair policy and 1.11 over fixed ten-residue suffix repair under the tested call caps. The reported sequence-group bootstrap interval for the former difference was approximately 0.38--0.87 contacts, conditional on that finite test set. The experiment lasted about 2 hours 55 minutes overall. Its independent audit checked saved solver witnesses and protocol traces. It included no matched RL arm and did not establish end-to-end equal-time superiority. This evidence motivates the fresh cluster replication; it is not a cluster result.
+\begin{table}[htbp]
+\centering
+\small
+\caption{Mean best witnessed contacts at elapsed checkpoints, over all five seeds. Early declared-cube proofs carry forward their certified incumbents. These descriptive means summarise search folds, not greedy-policy evaluations.}\label{tab:cpu_trajectories}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+& \multicolumn{4}{c}{CP-SAT} & \multicolumn{4}{c}{Project attention DQN} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+Sequence & 1 h & 2 h & 12 h & 24 h & 1 h & 2 h & 12 h & 24 h \\
+\midrule
+3d1 & 11.00 & 11.00 & 11.00 & 11.00 & 7.80 & 9.60 & 11.00 & 11.00 \\
+3d2 & 13.00 & 13.00 & 13.00 & 13.00 & 7.00 & 7.60 & 12.80 & 13.00 \\
+3d3 & 9.00 & 9.00 & 9.00 & 9.00 & 5.00 & 5.20 & 5.80 & 6.40 \\
+3d4 & 18.00 & 18.00 & 18.00 & 18.00 & 9.00 & 9.20 & 10.60 & 10.80 \\
+3d5 & 32.80 & 33.20 & 33.80 & 34.00 & 12.80 & 13.40 & 16.40 & 17.00 \\
+3d6 & 30.60 & 30.60 & 31.00 & 31.00 & 11.20 & 12.00 & 15.20 & 15.80 \\
+3d7 & 32.00 & 32.00 & 33.00 & 33.40 & 12.40 & 12.40 & 13.80 & 14.60 \\
+3d8 & 38.40 & 39.40 & 41.20 & 41.40 & 14.40 & 15.20 & 16.40 & 17.60 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-The cluster result tables and quality-versus-time figures will be populated only after execution and independent verification. No optimality, RL superiority, CPU speedup or convergence conclusion is inferred from the planned allocation.
+On each of 3d3--3d8, every CP-SAT one-hour incumbent exceeded the paired RL twenty-four-hour incumbent: 30 of 30 corresponding comparisons. On 3d1 and 3d2, RL eventually matched the certified optimum in every seed, whereas CP-SAT attained its optimal score by the one-hour checkpoint. Reaching a score and proving its optimality are distinct events: some CP-SAT proof runs continued beyond one hour.
 
-\section{Discussion and Claim Boundaries}\label{sec:discussion}
-The CPU experiment and the DecisionBoost replication address different questions. The former measures achievable quality under a common CPU allocation and elapsed budget. The latter isolates learned versus fixed repair selection using matched solver allowances and separately accounted offline costs. A CPU result does not describe GPU-accelerated RL, and a call-budget result does not automatically establish an elapsed-time advantage.
+All fifteen CP-SAT runs on 3d1--3d3 returned \texttt{OPTIMAL}, with contacts and upper bounds respectively equal to 11, 13 and 9. Their reported Slurm durations ranged from approximately 10 to 22 minutes on 3d1, 17 to 47 minutes on 3d2, and 38 minutes to 2 hours 11 minutes on 3d3. These durations include run overhead and should not be treated as exact solver callback times. The remaining twenty-five CP-SAT observations returned \texttt{FEASIBLE}. Their best contacts were 18 on 3d4, 33--35 on 3d5, 31 on 3d6, 33--34 on 3d7 and 40--43 on 3d8. Upper bounds remained loose, so these longer-sequence folds are not certified optimal. All proofs refer to the declared cube, not unrestricted lattice conformations.
 
-Combining neural proposals with a solver does not itself prove novelty or improved performance. The HP-specific learned decisions, verified solver feedback and ablation results must support the eventual contribution. Specialised CPSP/H-core methods remain relevant calibration references~\cite{CPSP2009}; comparison against general-purpose CP-SAT alone cannot establish superiority over exact HP methods. Bounds and optimality claims must name their domain, and the HP lattice task remains a combinatorial benchmark rather than a realistic all-atom folding model.
+\subsection{Training Progress and Greedy Policies}
+Only the five 3d1 RL runs completed the prescribed 200,000 training episodes. Subsequent frozen-policy sampling explains their approximately 4.97--7.55 million total episodes; their learning-update counts remained 199,972. The other thirty-five RL runs stopped before completing the fixed training schedule. Table~\ref{tab:training_progress} reports their observed episode and exploration ranges.
+
+\begin{table}[htbp]
+\centering
+\caption{RL progress within the 24-hour budget. Ranges span five seeds. On 3d1, total episodes include frozen-policy rollouts after the 200,000-episode training schedule; other rows contain unfinished training. The final exploration probability is not a convergence metric.}\label{tab:training_progress}
+\begin{tabular}{lrrr}
+\toprule
+Sequence & Total episodes & Final exploration & Training complete \\
+\midrule
+3d1 & 4,972,197--7,550,084 & 0.050 & 5/5 \\
+3d2 & 96,586--126,882 & 0.052--0.099 & 0/5 \\
+3d3 & 16,295--36,196 & 0.411--0.669 & 0/5 \\
+3d4 & 19,275--21,445 & 0.585--0.618 & 0/5 \\
+3d5 & 5,202--6,173 & 0.857--0.878 & 0/5 \\
+3d6 & 4,954--5,946 & 0.862--0.884 & 0/5 \\
+3d7 & 14,391--19,122 & 0.624--0.701 & 0/5 \\
+3d8 & 12,471--17,201 & 0.654--0.735 & 0/5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Best search folds did not consistently translate into strong greedy policies. The latest nonempty within-budget greedy evaluations scored 8--11 contacts on 3d1 and 9--13 on 3d2; the corresponding ranges on 3d3--3d8 were 1--3, 0--6, 1--6, 0--2, 1--7 and 1--3. Each evaluation attempted ten folds and reported all ten complete. These rollouts assess one current policy and are not independent training seeds. They do not identify whether slow training, the target-selection limitation, exploration scheduling or other baseline choices caused weak policy quality.
+
+\subsection{Context from the Published RL Study}
+Liu and Iba's attention-RL study reports best scores of 11, 13, 9, 18, 29 and 29 on the exact strings corresponding to our 3d1, 3d2, 3d3, 3d4, 3d6 and 3d7 respectively~\cite{AttnDRL2504}. Our 46- and 58-residue strings are not included in that study. The original experiments use RTX 3090 Ti/A100 GPUs and training schedules of 80,000--400,000 episodes. Our saved project configurations differ from the published protocol, and our main endpoint is a mean over five cold-start CPU runs, rather than a published best score. The reported values therefore provide context, not a matched elapsed-budget replication. In particular, improved CP-SAT contact counts on the shared 48- and 50-residue strings do not establish an equal-time advantage over the published GPU implementation.
+
+\section{Discussion and Limitations}\label{sec:discussion}
+Under the tested allocation, direct CP-SAT search provided stronger best-fold quality on six sequences, while both approaches attained the optima on the two shortest. The one-hour versus twenty-four-hour paired comparison shows that this result is not solely an end-of-budget effect. It supports CP-SAT as a practical method for these cold-start CPU workloads. It does not establish that longer CP-SAT computation will close its remaining optimality gaps.
+
+The CPU budget comparison is not a converged-policy comparison. Large replay batches and sequence-specific networks made the longer RL workloads expensive, and most of their training schedule remained unfinished. The preserved reference's unmasked bootstrap argmax is a possible source of target bias, but no controlled variant was run to isolate its effect. A corrected target, different schedule, smaller architecture or random valid-action search would each require a separately declared comparison. GPU acceleration and reuse of a policy across many sequences could change the cost balance; neither was tested here.
+
+A prospective independent scientific-machine-learning (SciML) arm could optimise a continuous relaxation by gradient flow, then decode candidate lattice folds and submit them to the same independent checker. Such a study would need a frozen construction rule, fresh seeds, the same CPU and elapsed budgets, and explicit accounting for training, initialisation and decoding. No SciML experiment was performed here, and no CP-SAT--SciML hybrid result is claimed.
+
+The evidence is limited to eight fixed strings and five seeds per method. Six feasibility outcomes were seen before selecting the two-method continuation. Solver seed variation under eight workers does not imply deterministic repeated execution. The baseline is a project configuration, with a proposed architecture for 3d8, rather than an exact reproduction of every original-paper setting. No matched random-search control or specialised CPSP/H-core baseline was included~\cite{CPSP2009}. The result therefore cannot establish the frontier of HP solving or the general superiority of constraint programming over reinforcement learning.
+
+The cluster analyser reported zero errors on all checked witness records, but this manuscript revision relies on the supplied remote report and has not independently reloaded all remote artifacts locally. The geometry checks do not establish learning quality, and longer-sequence CP-SAT bounds do not establish optimality. The HP lattice task remains a combinatorial model rather than realistic all-atom protein folding.
+
+\section{Conclusion}
+The completed eight-sequence, five-seed comparison found that CP-SAT and the project attention-DQN baseline tied on the two shortest sequences, while CP-SAT obtained better best-fold quality in every paired seed on the other six. On those six strings, its one-hour incumbents already exceeded the RL twenty-four-hour incumbents. CP-SAT certified declared-cube optimality on the first three sequences; no optimality proof was obtained on the remaining five. These findings establish practical performance under the specified cold-start CPU budget. Future work should isolate baseline learning limitations, measure training amortisation and evaluate learned solver cooperation in a separate controlled experiment.
 
 \section*{Code and Data Availability}
-The cloneable experiment bundle, frozen protocols, deadline guards and submission instructions are in \texttt{experiments/cluster/} of
-\url{https://github.com/pranav-ramanathan/Thesis-To-Paper}. Source provenance accompanies the project DQN reference. Completed local pilot artifacts remain separate from new cluster outputs. The earlier manuscript is archived for provenance; its claimed local reproduction results require their own artifact checks before reuse in a final comparison. The dissertation is unchanged.
+The portable experiment bundle, frozen protocol specification, independent checker, provenance checks, deadline guards and analysis scripts are available in \texttt{experiments/cluster/} at
+\url{https://github.com/pranav-ramanathan/Thesis-To-Paper}. The reported comparison uses \texttt{.cluster-runs/rl\_vs\_cp\_24h\_01} and references six unchanged observations in \texttt{.cluster-runs/seed0\_24h\_01}. These remote runtime artifacts are not asserted to be publicly archived or included in the Git repository. The seed-wise transcription is supplied as \texttt{experiments/cluster/results/rl\_vs\_cp\_24h\_01\_reported.json} and its CSV companion. These files derive from the supplied report, not downloaded raw task artifacts; a full raw-data release requires preserving the remote manifests, event logs, result metadata and solver witnesses. Source provenance accompanies the project DQN reference. The earlier manuscript and dissertation are unchanged.
+
+\appendix
+\section{Separate Exploratory Hybrid Evidence}\label{sec:exploratory}
+\subsection{Fixed RL--CP-SAT Feasibility}
+The earlier seed-0 feasibility pass tested CP-SAT, RL and a fixed hybrid on 3d4, 3d6 and 3d8. The hybrid used the same DQN with a bounded CP repair every 1,000 episodes once a valid incumbent existed. Ten movable residues alternated between suffix and central windows, with a 30-second repair limit charged to the elapsed budget. CP folds improved the search incumbent but were not added to RL replay. Its best contact counts were 14, 22 and 29 respectively, compared with RL's 10, 16 and 17 and CP-SAT's 18, 31 and 41. These one-seed outcomes motivated follow-up questions; they are not five-seed hybrid evidence and do not evaluate a learned repair controller.
+
+\subsection{DecisionBoost Prototype and Future Replication}
+A separate local DecisionBoost prototype combines a frozen ModernBERT-large sequence encoder, a small transformer fold constructor, a learned repair-region controller and bounded CP-SAT feedback. It selects suffix/internal repair windows, with verified solver improvements supplying learning targets. A completed local pilot reported five pipelines and 72 held-out sequences per pipeline. Learned repair selection improved mean final contacts by approximately 0.61 relative to training-selected static repair and 1.11 relative to fixed ten-residue suffix repair under its tested call caps. The reported sequence-group bootstrap interval for the former difference was approximately 0.38--0.87 contacts, conditional on that test set.
+
+These are exploratory local findings, not results of the completed primary CPU campaign. The pilot had no matched RL arm and did not establish end-to-end equal-time superiority. Its proposed fresh-sequence cluster replication remains unexecuted and separate. Equal solver call caps do not imply equal elapsed costs: encoder loading, solver teaching, neural training, proposal inference and online repair must be charged and reported. Encoder pretraining cost is unknown. This manuscript makes no novelty, convergence or learned-hybrid superiority claim from that prototype.
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}

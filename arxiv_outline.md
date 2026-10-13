@@ -1,168 +1,124 @@
-# Revised arXiv paper outline
+# Updated arXiv manuscript outline
 
-Working title: **DecisionBoost for HP Protein Folding: Solver-Guided Decisions
-and CPU Comparisons**.
+Title: **CP-SAT and Attention-Based Deep Q-Learning for HP Protein Folding under CPU Time Budgets**.
 
-The corresponding manuscript is [paper.tex](paper.tex). This is a working draft
-and execution protocol, not a claim that the cluster experiments have finished.
-The previous laptop manuscript is preserved verbatim in
-[archive/paper_laptop_draft_20261006.tex](archive/paper_laptop_draft_20261006.tex).
-No dissertation files are part of this revision.
+The manuscript is [paper.tex](paper.tex). This revision incorporates the completed
+Apocrita report supplied on 13 October 2026. It does not submit a new arXiv version.
+The [earlier laptop draft](archive/paper_laptop_draft_20261006.tex) and dissertation
+remain unchanged.
 
-## 1. Introduction
+## 1. Introduction and related work
 
-Introduce HP folding as a discrete optimisation benchmark, existing exact and
-learning approaches, and the cost of per-sequence RL training. The central
-hypothesis is that a transformer constructor and learned decision controller can
-use bounded solver feedback effectively. Distinguish this contribution from
-hybrid optimisation generally; do not claim first-ever use without a defensible
-literature audit.
+Define cubic-lattice HP folding as an optimisation benchmark. Explain direct
+constraint search and attention-based DQN, including the cost of per-sequence
+training. State the completed question: best verified complete folds under a
+common cold-start CPU budget. Cite Berger and Leighton for cubic HP hardness;
+optimisation is NP-hard, while the associated decision problem is NP-complete.
+Specialised CPSP/H-core solvers remain relevant but were not benchmarked here.
 
 ## 2. Problem and methods
 
-- Define complete self-avoiding cubic-lattice folds and contacts counted once,
-  with `i < j`, excluding consecutive residues. Energy is negative contacts.
-- Specify the exact problem domain for each experiment, anchoring, independent
-  checker, missing-solution handling, and scope of optimality certificates.
-- Describe the compact coordinate CP-SAT model rather than presenting the old
-  dense occupancy model as the new executable implementation.
-- Describe the bundled project attention DQN accurately: five-feature residue
-  observation, five relative actions, duelling transformer, prioritised replay,
-  Double DQN, fixed schedule, and restoration of training mode after evaluation.
-  The saved project settings are not labelled as exact published reproduction.
-- Define the fixed RL-plus-CP hybrid as an additional baseline; it does not
-  include the learned DecisionBoost controller or CP feedback in RL replay.
-- Define DecisionBoost's frozen open encoder, small constructor, repair-region
-  controller, bounded CP teacher and verified feedback. Separate known witnessed
-  repair gains from exact action values. Include fixed/static/random/cheap controls.
+Specify the exact strings and common cube, origin/+x anchoring, self-avoidance,
+unit backbone bonds and nonconsecutive HH contacts counted once. Energy equals
+negative contacts. Describe the compact coordinate CP-SAT formulation and the
+preserved project duelling attention DQN, action mask, replay, Double-DQN target,
+FP32, Adam and one update per episode. Table the saved configurations, including
+the proposed 3d8 architecture. Document the inherited unmasked bootstrap argmax;
+no corrected-target experiment was performed. Evaluation restores training mode.
 
-## 3. CPU comparison protocol and provenance
+## 3. Completed protocol and provenance
 
-Use a verified homogeneous Apocrita CPU selection. Keep primary methods' CPU
-allocation, common cube and elapsed budget fixed. The current main comparison
-is **CP-SAT versus RL**, with five seeds × eight benchmark strings × two methods
-giving **80 observations**. Six completed seed-0 observations are reused under
-the unchanged 24-hour protocol; the continuation queues **74 new tasks** at
-up to 24 concurrent allocations, eight cores/32 GiB each. The inherited
-16 October 2026 20:38:37 UTC deadline is not reset. Four waves need about four
-compute days before queue delays, with 14,208 additional allocated CPU-hours
-before saving overhead. Fixed-hybrid results are secondary feasibility evidence.
-The earlier generic three-method/120-run protocol remains available separately.
-Exact benchmark lengths are
-20, 24, 25, 36, 46, 48, 50 and 58, not the earlier generated length-eight corpus.
-The saved protocol lacks a 3d8 architecture; its proposed row stays labelled.
+Eight sequences of lengths 20, 24, 25, 36, 46, 48, 50 and 58, five seeds (0–4),
+and two methods give 80 observations. Eight CPU cores and `32G` RAM were requested
+per run on the homogeneous EHC selection. Scientific budget: 24 hours per run,
+including training, inference, solver/model construction, checking and output.
+CP-SAT can finish earlier with a full declared-cube optimality proof.
 
-Run separate disposable one-hour CP-SAT and RL resource pilots first. Apocrita's one-hour/ten-day advice is
-about scheduler requests, not the scientific budget. Request **ten days** for
-campaign jobs and apply a separate configurable cutoff, provisionally **24 hours
-per primary run**. Inspect the CPU pilot before selecting that budget; freeze
-the choice for prospective runs. The feasibility seed-0 scores were viewed
-before selecting the two-method scope; disclose their provenance rather than
-claiming all 80 observations were unseen confirmatory data. An absolute campaign
-deadline expires ten days after original preparation, including queue time.
+The 74 new tasks in array 30988549 all reported COMPLETED with exit code 0:0.
+Six unchanged seed-0 observations on 3d4/3d6/3d8 came from the feasibility pass;
+those outcomes were seen before the two-method scope was selected. No result
+is counted twice. The original ten-day deadline, 16 October 2026 at 20:38:37 UTC,
+was inherited rather than reset. Slurm's ten-day ceiling is not each run's
+scientific budget. Resource pilots selected eight cores among tested 1/2/4/8
+settings; they are engineering measurements, not learning experiments.
 
-The reported Apocrita resource pilots now support eight cores among the tested
-1/2/4/8 counts. The corrected RL run checked all eight configurations at eight
-threads, including full replay checkpoints, with reported peak memory 10.92G.
-One four-thread large-batch cell reached its engineering deadline. Stop broad
-profiling and assess a separate 24-hour seed-0 pass on 3d4/3d6/3d8 before
-freezing five-seed budgets. Extrapolated 200,000-episode durations at eight
-threads are approximately 9.9/39.0/15.7 days; these are short-episode throughput
-forecasts, with no convergence claim. See
-[the reported pilot findings](experiments/cluster/APOCRITA_PILOT_02.md).
+All 80 observations have full budget coverage or an applicable cube proof.
+The cluster analyser reported 363,488 witness-record checks and zero errors.
+These are records, not necessarily unique folds. The local manuscript revision
+uses the supplied report; original remote fold/event artifacts were not downloaded
+or independently re-audited here. Preserve both remote campaigns for archival.
 
-The reported 24-hour seed-0 feasibility array has now completed on the three
-representatives. CP-SAT/RL/fixed-hybrid contact counts were respectively
-18/10/14 on 3d4, 31/16/22 on 3d6 and 41/17/29 on 3d8. The cluster analyser
-reported 1,892 checked witnesses and zero errors; Slurm reported all nine
-tasks completed, with peak RSS about 11.30 GiB. These are one-seed best-search
-outcomes, not greedy policy quality, a multi-seed ranking or a learned
-DecisionBoost evaluation. Inspect trajectories, training progress and solver
-bounds before selecting the subsequent budget. See
-[the reported seed-0 findings](experiments/cluster/APOCRITA_SEED0_24H.md).
+## 4. Results
 
-Follow-up diagnostics show that CP-SAT's one-hour incumbents already exceeded
-the 24-hour RL and fixed-hybrid incumbents on all three strings. Eight of nine
-best scores were unchanged between the 12- and 24-hour checkpoints. All RL
-runs were incomplete (roughly 2.4–10.0% of the 200,000-episode schedule), with
-final epsilon approximately 0.61–0.89 and weak sampled greedy policies.
-Full-search solver statuses were FEASIBLE, with loose bounds rather than
-optimality proofs. Empty deadline evaluations must be excluded from policy
-summaries, while genuine zero-contact folds remain visible. The user's selected
-continuation measures practical cold-start budget performance despite incomplete
-training. A static baseline audit documents the inherited unmasked Double-DQN
-bootstrap target; no correction is silently applied while reusing old runs.
-See [the baseline audit](experiments/cluster/BASELINE_AUDIT.md). Numerical learning
-diagnostics and any corrected variant remain separate future experiments.
+Primary table: means and sample SDs of five seed-wise best-fold scores, with
+higher contacts better. Every method/sequence has 5/5 valid budget outcomes.
+The [reported-results transcription](experiments/cluster/results/README.md)
+contains the per-seed values and recomputed summaries. The contacts figure shows
+sample-SD error bars, not confidence intervals.
 
-Record quality at one, two, twelve and twenty-four hours, training completion,
-greedy policy outcomes and best validated search folds separately. If the fixed
-200,000-episode training finishes early, identify the subsequent frozen-policy
-sampling phase. Solver proofs are valid only for the searched domain.
+| Sequence | CP-SAT mean ± SD | RL mean ± SD |
+|---|---:|---:|
+| 3d1 | 11.00 ± 0.00 | 11.00 ± 0.00 |
+| 3d2 | 13.00 ± 0.00 | 13.00 ± 0.00 |
+| 3d3 | 9.00 ± 0.00 | 6.40 ± 0.55 |
+| 3d4 | 18.00 ± 0.00 | 10.80 ± 0.84 |
+| 3d5 | 34.00 ± 0.71 | 17.00 ± 1.58 |
+| 3d6 | 31.00 ± 0.00 | 15.80 ± 1.10 |
+| 3d7 | 33.40 ± 0.55 | 14.60 ± 0.55 |
+| 3d8 | 41.40 ± 1.14 | 17.60 ± 0.89 |
 
-Analyse per-seed variability and paired comparisons. Include completion/coverage
-counts and missing witnesses; do not turn missing solutions into zero. Show
-actual compute time, queue time and allocated CPU-hours. Interrupted jobs preserve
-partial findings. Checkpoint/resume does not reset the deadline or refund lost work.
+The two methods tie on 3d1/3d2. CP-SAT leads in all 30 paired seeds across
+3d3–3d8, and its one-hour incumbent exceeds the corresponding RL 24-hour
+incumbent in every pair. Describe this fixed benchmark result without asserting
+population-wide statistical significance. All 15 CP-SAT runs on 3d1–3d3 report
+OPTIMAL for the declared cube; the other 25 report FEASIBLE with loose bounds.
 
-## 4. Separate fresh-sequence DecisionBoost replication
+Separate best-search quality from greedy-policy quality. Only the five 3d1 RL
+runs complete 200,000 training episodes; their millions of total episodes include
+subsequent frozen-policy sampling. The other 35 runs remain undertrained.
+Report episode/exploration ranges and latest nonempty within-budget evaluations.
+Zero-contact completed folds remain zero; empty deadline evaluations are excluded.
+Ten evaluations of one policy are not ten independent training seeds.
 
-Five independent pipelines; frozen train/validation/test split excluding all
-earlier corpus reversal equivalents. Train lengths 16–36; test lengths 16–58.
-The 72 fresh test sequences × five seeds produce 360 case comparisons. The
-optional bundle adds five jobs to the primary campaign, **125 jobs total**.
+## 5. Published results and limitations
 
-Keep the tested architecture and single-worker CP caps fixed. Compare learned
-repair selection against fixed ten-residue suffix repair and training-selected
-static selection as the main controls, with random and cheap controls as secondary.
-Use the original complete reachable coordinate domains. This is a separate
-call-budget experiment, not a fourth row in the primary restricted-cube elapsed
-comparison. Encoder/training/teaching costs and online costs require separate
-accounting; pretrained encoder training cost is unknown.
+Compare published best scores contextually, without pooling them into CPU means.
+Exact strings match Liu/Iba's rows 1–6 for our 3d1/3d2/3d3/3d4/3d6/3d7;
+their best contacts are 11/13/9/18/29/29. Our 46- and 58-residue strings are absent.
+Their seven-row study includes a different 60-residue string. GPU hardware,
+episode schedules and project configurations differ. The archived draft's
+attribution of 46-/58-residue values is historical and is not repeated here.
+Primary source: https://arxiv.org/html/2504.15634v1#S3.SS1.
 
-## 5. Results
+State CPU-specific scope, eight fixed strings, five seeds, seen/reused outcomes,
+undertraining, the inherited target limitation, missing random-search controls,
+and lack of specialised-solver comparison. Do not infer causes of weak learning
+or general RL/CP superiority. These remain toy lattice models rather than
+physical all-atom folding.
 
-Keep the completed local pilot in a clearly labelled motivating subsection.
-Its five-pipeline improvement over static selection does not establish superiority
-over RL, an equal-time end-to-end advantage, or learning convergence.
+## 6. Conclusion and prospective studies
 
-Present the completed cluster seed-0 pass separately from the pending repeated
-campaign: CP-SAT obtained the strongest witnessed score on all three selected
-strings, while the fixed hybrid improved on RL. Attribute hybrid search gains
-to the measured combined procedure; do not infer learned policy improvements
-or benefits of the unevaluated learned controller from those best-fold scores.
+The completed finding is CP-SAT's stronger quality under the specified cold-start
+CPU budget. Additional work may test the baseline's target mask, training
+amortisation or an independent SciML continuous-relaxation/gradient-flow arm.
+SciML decoding must produce complete valid lattice folds with its costs counted;
+no SciML results or new experimental campaign are presented in this revision.
 
-Populate new primary tables only from verified cluster outputs. Present contact
-trajectories, completion fractions, time-to-target with censoring, seed variability,
-and domain-scoped solver bounds. Present the separate DecisionBoost comparison
-and cost breakdown independently. Decimal scores are means of integer contacts.
+## Appendix: separate exploratory hybrid evidence
 
-Keep historical MPS measurements and original-paper values as contextual results
-with precise source and budget labels. They cannot be pooled into new CPU means
-or used as an equal-time baseline. Verify earlier manuscript reproduction claims
-against artifacts before reusing them.
+Keep the fixed-hybrid seed-0 findings (3d4/3d6/3d8: 14/22/29 contacts) separate
+from the five-seed primary comparison. CP folds improve its incumbent but are
+not fed into RL replay. No learned controller was tested in that arm.
 
-## 6. Discussion
+Describe the local DecisionBoost constructor/controller/solver pilot as exploratory,
+with its own held-out data, call caps and costs. The separate cluster replication
+remains unexecuted. It does not supply evidence of equal-time superiority over
+RL or CP-SAT, learning convergence or first-ever hybrid optimisation.
 
-Discuss CPU-specific practicality, training amortisation across new sequences,
-what the controller learns, and failure cases. Identify specialised CPSP/H-core
-results as a strong domain reference with their own offline work and coverage.
-Do not equate a general-purpose CP-SAT comparison with the frontier of exact HP
-solving. State the limited benchmark size and difference between lattice folding
-and physical protein folding.
+## Verification and release
 
-## Reproducibility
-
-Include source hashes, exact sequence/configuration JSON, model revision, CPU
-architecture, dependency versions, random streams, checkpoint state, deadline
-rules, independent witness validation and scripts. Cluster instructions:
-[experiments/cluster/README.md](experiments/cluster/README.md).
-
-Official documentation checked 6 October 2026:
-
-- [Runtime recommendation and hard limits](https://docs.hpc.qmul.ac.uk/using/submittingjobs/runtime/).
-- [EHC hardware and per-job core limit](https://docs.hpc.qmul.ac.uk/nodes/ehc/).
-- [Slurm partitions](https://docs.hpc.qmul.ac.uk/using/submittingjobs/partitions/).
-- [Node constraints](https://docs.hpc.qmul.ac.uk/using/submittingjobs/constraints/).
-- [Job arrays](https://docs.hpc.qmul.ac.uk/using/arrays/).
-- [Python distributions](https://docs.hpc.qmul.ac.uk/using/python_distributions/).
+Recompute all 16 means/sample SDs and paired/timepoint claims from the transcription;
+check citation mappings and domain-scoped proofs; compile the manuscript and inspect
+layout. Keep raw-data provenance distinct from the local checks. Preserve numerical
+worker sources and all dissertation files. Update the repository manuscript only;
+arXiv submission requires a separate explicit instruction.

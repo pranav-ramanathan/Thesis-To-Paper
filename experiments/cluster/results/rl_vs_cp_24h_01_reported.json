@@ -1,0 +1,1957 @@
+{
+  "schema_version": 1,
+  "source": "User-pasted final Apocrita report and Slurm accounting, 13 October 2026; transcription, not original raw artifacts",
+  "campaign": "rl_vs_cp_24h_01",
+  "slurm_array_job_id": "30988549",
+  "new_tasks_completed": 74,
+  "new_task_exit_codes": "all 0:0",
+  "total_observations": 80,
+  "reused_observations": 6,
+  "run_budget_s": 86400,
+  "threads": 8,
+  "memory_request": "32G",
+  "deadline_utc": "2026-10-16T20:38:37.922608+00:00",
+  "reported_witness_records_checked": 363488,
+  "reported_verification_errors": [],
+  "protocol_sha256": "168a7d7d59a80a6193618d93e71b01622db24393640b48366f647294dc2fba94",
+  "configurations": {
+    "3d1": {
+      "batch_size": 512,
+      "memory_size": 8000,
+      "target_update_freq": 100,
+      "d_model": 64,
+      "nhead": 4,
+      "num_layers": 1,
+      "eval_interval": 1000,
+      "lr": 0.0005,
+      "epsilon_end": 0.01,
+      "provenance": "saved protocol row; no remapping",
+      "sequence": "HPHPPHHPHPPHPHHPPHPH",
+      "length": 20,
+      "dim_feedforward": 256,
+      "gamma": 0.98
+    },
+    "3d2": {
+      "batch_size": 256,
+      "memory_size": 10000,
+      "target_update_freq": 100,
+      "d_model": 256,
+      "nhead": 8,
+      "num_layers": 2,
+      "eval_interval": 1000,
+      "lr": 5e-05,
+      "epsilon_end": 0.01,
+      "provenance": "saved protocol row; no remapping",
+      "sequence": "HHPPHPPHPPHPPHPPHPPHPPHH",
+      "length": 24,
+      "dim_feedforward": 1024,
+      "gamma": 0.98
+    },
+    "3d3": {
+      "batch_size": 1024,
+      "memory_size": 10000,
+      "target_update_freq": 100,
+      "d_model": 256,
+      "nhead": 8,
+      "num_layers": 2,
+      "eval_interval": 1000,
+      "lr": 0.0005,
+      "epsilon_end": 0.01,
+      "provenance": "saved protocol row; no remapping",
+      "sequence": "PPHPPHHPPPPHHPPPPHHPPPPHH",
+      "length": 25,
+      "dim_feedforward": 1024,
+      "gamma": 0.98
+    },
+    "3d4": {
+      "batch_size": 1024,
+      "memory_size": 50000,
+      "target_update_freq": 100,
+      "d_model": 256,
+      "nhead": 8,
+      "num_layers": 2,
+      "eval_interval": 5000,
+      "lr": 0.0005,
+      "epsilon_end": 0.001,
+      "provenance": "saved protocol row; no remapping",
+      "sequence": "PPPHHPPHHPPPPPHHHHHHHPPHHPPPPHHPPHPP",
+      "length": 36,
+      "dim_feedforward": 1024,
+      "gamma": 0.98
+    },
+    "3d5": {
+      "batch_size": 2048,
+      "memory_size": 150000,
+      "target_update_freq": 100,
+      "d_model": 256,
+      "nhead": 8,
+      "num_layers": 3,
+      "eval_interval": 50000,
+      "lr": 0.0005,
+      "epsilon_end": 0.001,
+      "provenance": "saved protocol row; no remapping",
+      "sequence": "PPHHHPHHHPPPHPHHPHHPPHPHHHHPHPPHHHHHPHPHHPPHHP",
+      "length": 46,
+      "dim_feedforward": 1024,
+      "gamma": 0.98
+    },
+    "3d6": {
+      "batch_size": 2048,
+      "memory_size": 200000,
+      "target_update_freq": 100,
+      "d_model": 256,
+      "nhead": 8,
+      "num_layers": 3,
+      "eval_interval": 50000,
+      "lr": 0.0005,
+      "epsilon_end": 0.001,
+      "provenance": "saved protocol row; no remapping",
+      "sequence": "PPHPPHHPPHHPPPPPHHHHHHHHHHPPPPPPHHPPHHPPHPPHHHHH",
+      "length": 48,
+      "dim_feedforward": 1024,
+      "gamma": 0.98
+    },
+    "3d7": {
+      "batch_size": 256,
+      "memory_size": 30000,
+      "target_update_freq": 200,
+      "d_model": 512,
+      "nhead": 16,
+      "num_layers": 3,
+      "eval_interval": 1000,
+      "lr": 2e-05,
+      "epsilon_end": 0.01,
+      "provenance": "saved protocol row; no remapping",
+      "sequence": "HHPHPHPHPHHHHPHPPPHPPPHPPPPHPPPHPPPHPHHHHPHPHPHPHH",
+      "length": 50,
+      "dim_feedforward": 2048,
+      "gamma": 0.98
+    },
+    "3d8": {
+      "batch_size": 256,
+      "memory_size": 30000,
+      "target_update_freq": 200,
+      "d_model": 512,
+      "nhead": 16,
+      "num_layers": 3,
+      "eval_interval": 1000,
+      "lr": 2e-05,
+      "epsilon_end": 0.01,
+      "provenance": "proposed 3d8; absent from saved protocol",
+      "sequence": "PHPHHHPHHHPPHHPHPHHPHHHPHPHPHHPPHHHPPHPHPPPPHPPHPPHHPPHPPH",
+      "length": 58,
+      "dim_feedforward": 2048,
+      "gamma": 0.98
+    }
+  },
+  "summary": [
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "cp_sat": {
+        "n": 5,
+        "mean_contacts": 11,
+        "sample_sd_contacts": 0.0,
+        "mean_contacts_at_hours": {
+          "1": 11,
+          "2": 11,
+          "12": 11,
+          "24": 11
+        }
+      },
+      "rl": {
+        "n": 5,
+        "mean_contacts": 11,
+        "sample_sd_contacts": 0.0,
+        "mean_contacts_at_hours": {
+          "1": 7.8,
+          "2": 9.6,
+          "12": 11,
+          "24": 11
+        }
+      },
+      "paired_cp_minus_rl": {
+        "mean_contacts": 0,
+        "sample_sd_contacts": 0.0
+      }
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "cp_sat": {
+        "n": 5,
+        "mean_contacts": 13,
+        "sample_sd_contacts": 0.0,
+        "mean_contacts_at_hours": {
+          "1": 13,
+          "2": 13,
+          "12": 13,
+          "24": 13
+        }
+      },
+      "rl": {
+        "n": 5,
+        "mean_contacts": 13,
+        "sample_sd_contacts": 0.0,
+        "mean_contacts_at_hours": {
+          "1": 7,
+          "2": 7.6,
+          "12": 12.8,
+          "24": 13
+        }
+      },
+      "paired_cp_minus_rl": {
+        "mean_contacts": 0,
+        "sample_sd_contacts": 0.0
+      }
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "cp_sat": {
+        "n": 5,
+        "mean_contacts": 9,
+        "sample_sd_contacts": 0.0,
+        "mean_contacts_at_hours": {
+          "1": 9,
+          "2": 9,
+          "12": 9,
+          "24": 9
+        }
+      },
+      "rl": {
+        "n": 5,
+        "mean_contacts": 6.4,
+        "sample_sd_contacts": 0.5477225575051661,
+        "mean_contacts_at_hours": {
+          "1": 5,
+          "2": 5.2,
+          "12": 5.8,
+          "24": 6.4
+        }
+      },
+      "paired_cp_minus_rl": {
+        "mean_contacts": 2.6,
+        "sample_sd_contacts": 0.5477225575051661
+      }
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "cp_sat": {
+        "n": 5,
+        "mean_contacts": 18,
+        "sample_sd_contacts": 0.0,
+        "mean_contacts_at_hours": {
+          "1": 18,
+          "2": 18,
+          "12": 18,
+          "24": 18
+        }
+      },
+      "rl": {
+        "n": 5,
+        "mean_contacts": 10.8,
+        "sample_sd_contacts": 0.8366600265340756,
+        "mean_contacts_at_hours": {
+          "1": 9,
+          "2": 9.2,
+          "12": 10.6,
+          "24": 10.8
+        }
+      },
+      "paired_cp_minus_rl": {
+        "mean_contacts": 7.2,
+        "sample_sd_contacts": 0.8366600265340756
+      }
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "cp_sat": {
+        "n": 5,
+        "mean_contacts": 34,
+        "sample_sd_contacts": 0.7071067811865476,
+        "mean_contacts_at_hours": {
+          "1": 32.8,
+          "2": 33.2,
+          "12": 33.8,
+          "24": 34
+        }
+      },
+      "rl": {
+        "n": 5,
+        "mean_contacts": 17,
+        "sample_sd_contacts": 1.5811388300841898,
+        "mean_contacts_at_hours": {
+          "1": 12.8,
+          "2": 13.4,
+          "12": 16.4,
+          "24": 17
+        }
+      },
+      "paired_cp_minus_rl": {
+        "mean_contacts": 17,
+        "sample_sd_contacts": 2.1213203435596424
+      }
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "cp_sat": {
+        "n": 5,
+        "mean_contacts": 31,
+        "sample_sd_contacts": 0.0,
+        "mean_contacts_at_hours": {
+          "1": 30.6,
+          "2": 30.6,
+          "12": 31,
+          "24": 31
+        }
+      },
+      "rl": {
+        "n": 5,
+        "mean_contacts": 15.8,
+        "sample_sd_contacts": 1.0954451150103321,
+        "mean_contacts_at_hours": {
+          "1": 11.2,
+          "2": 12,
+          "12": 15.2,
+          "24": 15.8
+        }
+      },
+      "paired_cp_minus_rl": {
+        "mean_contacts": 15.2,
+        "sample_sd_contacts": 1.0954451150103321
+      }
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "cp_sat": {
+        "n": 5,
+        "mean_contacts": 33.4,
+        "sample_sd_contacts": 0.5477225575051661,
+        "mean_contacts_at_hours": {
+          "1": 32,
+          "2": 32,
+          "12": 33,
+          "24": 33.4
+        }
+      },
+      "rl": {
+        "n": 5,
+        "mean_contacts": 14.6,
+        "sample_sd_contacts": 0.5477225575051661,
+        "mean_contacts_at_hours": {
+          "1": 12.4,
+          "2": 12.4,
+          "12": 13.8,
+          "24": 14.6
+        }
+      },
+      "paired_cp_minus_rl": {
+        "mean_contacts": 18.8,
+        "sample_sd_contacts": 0.8366600265340756
+      }
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "cp_sat": {
+        "n": 5,
+        "mean_contacts": 41.4,
+        "sample_sd_contacts": 1.140175425099138,
+        "mean_contacts_at_hours": {
+          "1": 38.4,
+          "2": 39.4,
+          "12": 41.2,
+          "24": 41.4
+        }
+      },
+      "rl": {
+        "n": 5,
+        "mean_contacts": 17.6,
+        "sample_sd_contacts": 0.8944271909999159,
+        "mean_contacts_at_hours": {
+          "1": 14.4,
+          "2": 15.2,
+          "12": 16.4,
+          "24": 17.6
+        }
+      },
+      "paired_cp_minus_rl": {
+        "mean_contacts": 23.8,
+        "sample_sd_contacts": 1.7888543819998317
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 0,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 11,
+        "2": 11,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 11,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 987
+    },
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 0,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 8,
+        "2": 9,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 4972197,
+      "updates": 199972,
+      "epsilon_rounded": 0.05,
+      "training_complete": true,
+      "latest_greedy_mean": 8,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 1,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 11,
+        "2": 11,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 11,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 616
+    },
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 1,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 6,
+        "2": 7,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 6828625,
+      "updates": 199972,
+      "epsilon_rounded": 0.05,
+      "training_complete": true,
+      "latest_greedy_mean": 11,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 2,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 11,
+        "2": 11,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 11,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 757
+    },
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 2,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 8,
+        "2": 11,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 7547712,
+      "updates": 199972,
+      "epsilon_rounded": 0.05,
+      "training_complete": true,
+      "latest_greedy_mean": 11,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 3,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 11,
+        "2": 11,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 11,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 798
+    },
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 3,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 8,
+        "2": 10,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 7550084,
+      "updates": 199972,
+      "epsilon_rounded": 0.05,
+      "training_complete": true,
+      "latest_greedy_mean": 10,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 4,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 11,
+        "2": 11,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 11,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 1301
+    },
+    {
+      "seq_id": "3d1",
+      "length": 20,
+      "seed": 4,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 9,
+        "2": 11,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 7532639,
+      "updates": 199972,
+      "epsilon_rounded": 0.05,
+      "training_complete": true,
+      "latest_greedy_mean": 10,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 0,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 13,
+        "2": 13,
+        "12": 13,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 13,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 992
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 0,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 7,
+        "2": 7,
+        "12": 13,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 113949,
+      "updates": 113938,
+      "epsilon_rounded": 0.067,
+      "training_complete": false,
+      "latest_greedy_mean": 9,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 1,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 13,
+        "2": 13,
+        "12": 13,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 13,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 2222
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 1,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 7,
+        "2": 7,
+        "12": 12,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 114814,
+      "updates": 114803,
+      "epsilon_rounded": 0.066,
+      "training_complete": false,
+      "latest_greedy_mean": 10,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 2,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 13,
+        "2": 13,
+        "12": 13,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 13,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 2596
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 2,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 7,
+        "2": 7,
+        "12": 13,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 117077,
+      "updates": 117066,
+      "epsilon_rounded": 0.063,
+      "training_complete": false,
+      "latest_greedy_mean": 11,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 3,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 13,
+        "2": 13,
+        "12": 13,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 13,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 1543
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 3,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 6,
+        "2": 9,
+        "12": 13,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 126882,
+      "updates": 126871,
+      "epsilon_rounded": 0.052,
+      "training_complete": false,
+      "latest_greedy_mean": 13,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 4,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 13,
+        "2": 13,
+        "12": 13,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 13,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 2831
+    },
+    {
+      "seq_id": "3d2",
+      "length": 24,
+      "seed": 4,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 8,
+        "2": 8,
+        "12": 13,
+        "24": 13
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 96586,
+      "updates": 96575,
+      "epsilon_rounded": 0.099,
+      "training_complete": false,
+      "latest_greedy_mean": 11,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 0,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 9,
+        "2": 9,
+        "12": 9,
+        "24": 9
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 9,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 7845
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 0,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 6,
+        "2": 6,
+        "12": 7,
+        "24": 7
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 17342,
+      "updates": 17298,
+      "epsilon_rounded": 0.652,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 1,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 9,
+        "2": 9,
+        "12": 9,
+        "24": 9
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 9,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 4905
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 1,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 4,
+        "2": 5,
+        "12": 5,
+        "24": 6
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 16295,
+      "updates": 16251,
+      "epsilon_rounded": 0.669,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 2,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 9,
+        "2": 9,
+        "12": 9,
+        "24": 9
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 9,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 5853
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 2,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 5,
+        "2": 5,
+        "12": 6,
+        "24": 6
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 33600,
+      "updates": 33556,
+      "epsilon_rounded": 0.437,
+      "training_complete": false,
+      "latest_greedy_mean": 3,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 3,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 9,
+        "2": 9,
+        "12": 9,
+        "24": 9
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 9,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 2296
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 3,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 5,
+        "2": 5,
+        "12": 5,
+        "24": 7
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 36196,
+      "updates": 36152,
+      "epsilon_rounded": 0.411,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 4,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 9,
+        "2": 9,
+        "12": 9,
+        "24": 9
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "OPTIMAL",
+      "upper_bound": 9,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": 3845
+    },
+    {
+      "seq_id": "3d3",
+      "length": 25,
+      "seed": 4,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 5,
+        "2": 5,
+        "12": 6,
+        "24": 6
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 33197,
+      "updates": 33153,
+      "epsilon_rounded": 0.442,
+      "training_complete": false,
+      "latest_greedy_mean": 2,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 0,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 18,
+        "2": 18,
+        "12": 18,
+        "24": 18
+      },
+      "valid_budget_result": true,
+      "reused": true,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 40,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 0,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 8,
+        "2": 9,
+        "12": 10,
+        "24": 10
+      },
+      "valid_budget_result": true,
+      "reused": true,
+      "episode": 19962,
+      "updates": 19932,
+      "epsilon_rounded": 0.608,
+      "training_complete": false,
+      "latest_greedy_mean": 2,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 1,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 18,
+        "2": 18,
+        "12": 18,
+        "24": 18
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 39,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 1,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 10,
+        "2": 10,
+        "12": 12,
+        "24": 12
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 21181,
+      "updates": 21151,
+      "epsilon_rounded": 0.589,
+      "training_complete": false,
+      "latest_greedy_mean": 6,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 2,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 18,
+        "2": 18,
+        "12": 18,
+        "24": 18
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 39,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 2,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 11,
+        "2": 11,
+        "12": 11,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 20566,
+      "updates": 20536,
+      "epsilon_rounded": 0.598,
+      "training_complete": false,
+      "latest_greedy_mean": 2,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 3,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 18,
+        "2": 18,
+        "12": 18,
+        "24": 18
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 38,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 3,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 8,
+        "2": 8,
+        "12": 10,
+        "24": 10
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 21445,
+      "updates": 21415,
+      "epsilon_rounded": 0.585,
+      "training_complete": false,
+      "latest_greedy_mean": 5,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 4,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 18,
+        "2": 18,
+        "12": 18,
+        "24": 18
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 41,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d4",
+      "length": 36,
+      "seed": 4,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 8,
+        "2": 8,
+        "12": 10,
+        "24": 11
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 19275,
+      "updates": 19245,
+      "epsilon_rounded": 0.618,
+      "training_complete": false,
+      "latest_greedy_mean": 0,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 0,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 32,
+        "2": 33,
+        "12": 33,
+        "24": 33
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 144,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 0,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 13,
+        "2": 15,
+        "12": 19,
+        "24": 19
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 6063,
+      "updates": 6017,
+      "epsilon_rounded": 0.86,
+      "training_complete": false,
+      "latest_greedy_mean": 2,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 1,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 32,
+        "2": 32,
+        "12": 34,
+        "24": 35
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 144,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 1,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 14,
+        "2": 14,
+        "12": 16,
+        "24": 16
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 5202,
+      "updates": 5156,
+      "epsilon_rounded": 0.878,
+      "training_complete": false,
+      "latest_greedy_mean": 3,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 2,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 34,
+        "2": 34,
+        "12": 34,
+        "24": 34
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 141,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 2,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 11,
+        "2": 12,
+        "12": 15,
+        "24": 18
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 6173,
+      "updates": 6127,
+      "epsilon_rounded": 0.857,
+      "training_complete": false,
+      "latest_greedy_mean": 5,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 3,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 34,
+        "2": 34,
+        "12": 34,
+        "24": 34
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 144,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 3,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 13,
+        "2": 13,
+        "12": 17,
+        "24": 17
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 5480,
+      "updates": 5434,
+      "epsilon_rounded": 0.872,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 4,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 32,
+        "2": 33,
+        "12": 34,
+        "24": 34
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 143,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d5",
+      "length": 46,
+      "seed": 4,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 13,
+        "2": 13,
+        "12": 15,
+        "24": 15
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 5362,
+      "updates": 5316,
+      "epsilon_rounded": 0.875,
+      "training_complete": false,
+      "latest_greedy_mean": 6,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 0,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 31,
+        "2": 31,
+        "12": 31,
+        "24": 31
+      },
+      "valid_budget_result": true,
+      "reused": true,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 125,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 0,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 9,
+        "2": 12,
+        "12": 15,
+        "24": 16
+      },
+      "valid_budget_result": true,
+      "reused": true,
+      "episode": 4954,
+      "updates": 4910,
+      "epsilon_rounded": 0.884,
+      "training_complete": false,
+      "latest_greedy_mean": 0,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 1,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 30,
+        "2": 30,
+        "12": 31,
+        "24": 31
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 123,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 1,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 10,
+        "2": 11,
+        "12": 16,
+        "24": 16
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 5728,
+      "updates": 5684,
+      "epsilon_rounded": 0.867,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 2,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 31,
+        "2": 31,
+        "12": 31,
+        "24": 31
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 124,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 2,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 13,
+        "2": 13,
+        "12": 13,
+        "24": 14
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 5107,
+      "updates": 5063,
+      "epsilon_rounded": 0.88,
+      "training_complete": false,
+      "latest_greedy_mean": 2,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 3,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 31,
+        "2": 31,
+        "12": 31,
+        "24": 31
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 123,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 3,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 12,
+        "2": 12,
+        "12": 17,
+        "24": 17
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 5946,
+      "updates": 5902,
+      "epsilon_rounded": 0.862,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 4,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 30,
+        "2": 30,
+        "12": 31,
+        "24": 31
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 124,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d6",
+      "length": 48,
+      "seed": 4,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 12,
+        "2": 12,
+        "12": 15,
+        "24": 16
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 5171,
+      "updates": 5127,
+      "epsilon_rounded": 0.879,
+      "training_complete": false,
+      "latest_greedy_mean": 2,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 0,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 31,
+        "2": 31,
+        "12": 33,
+        "24": 34
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 101,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 0,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 11,
+        "2": 11,
+        "12": 12,
+        "24": 14
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 16662,
+      "updates": 16657,
+      "epsilon_rounded": 0.663,
+      "training_complete": false,
+      "latest_greedy_mean": 5,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 1,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 32,
+        "2": 32,
+        "12": 33,
+        "24": 33
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 102,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 1,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 14,
+        "2": 14,
+        "12": 14,
+        "24": 15
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 14604,
+      "updates": 14599,
+      "epsilon_rounded": 0.697,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 2,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 33,
+        "2": 33,
+        "12": 34,
+        "24": 34
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 100,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 2,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 12,
+        "2": 12,
+        "12": 14,
+        "24": 15
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 16147,
+      "updates": 16142,
+      "epsilon_rounded": 0.671,
+      "training_complete": false,
+      "latest_greedy_mean": 4,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 3,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 32,
+        "2": 32,
+        "12": 33,
+        "24": 33
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 102,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 3,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 11,
+        "2": 11,
+        "12": 15,
+        "24": 15
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 19122,
+      "updates": 19117,
+      "epsilon_rounded": 0.624,
+      "training_complete": false,
+      "latest_greedy_mean": 7,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 4,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 32,
+        "2": 32,
+        "12": 32,
+        "24": 33
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 102,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d7",
+      "length": 50,
+      "seed": 4,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 14,
+        "2": 14,
+        "12": 14,
+        "24": 14
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 14391,
+      "updates": 14386,
+      "epsilon_rounded": 0.701,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 0,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 40,
+        "2": 40,
+        "12": 41,
+        "24": 41
+      },
+      "valid_budget_result": true,
+      "reused": true,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 183,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 0,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 14,
+        "2": 16,
+        "12": 17,
+        "24": 17
+      },
+      "valid_budget_result": true,
+      "reused": true,
+      "episode": 12471,
+      "updates": 12467,
+      "epsilon_rounded": 0.735,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 1,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 38,
+        "2": 39,
+        "12": 40,
+        "24": 40
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 181,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 1,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 14,
+        "2": 14,
+        "12": 16,
+        "24": 18
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 13508,
+      "updates": 13504,
+      "epsilon_rounded": 0.716,
+      "training_complete": false,
+      "latest_greedy_mean": 3,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 2,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 38,
+        "2": 40,
+        "12": 41,
+        "24": 41
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 183,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 2,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 15,
+        "2": 16,
+        "12": 16,
+        "24": 19
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 15800,
+      "updates": 15796,
+      "epsilon_rounded": 0.677,
+      "training_complete": false,
+      "latest_greedy_mean": 2,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 3,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 39,
+        "2": 40,
+        "12": 43,
+        "24": 43
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 180,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 3,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 14,
+        "2": 15,
+        "12": 16,
+        "24": 17
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 17201,
+      "updates": 17197,
+      "epsilon_rounded": 0.654,
+      "training_complete": false,
+      "latest_greedy_mean": 2,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 4,
+      "arm": "cp_sat",
+      "contacts_at_hours": {
+        "1": 37,
+        "2": 38,
+        "12": 41,
+        "24": 42
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "solver_status": "FEASIBLE",
+      "upper_bound": 181,
+      "scope": "full_declared_cube",
+      "slurm_elapsed_s": null
+    },
+    {
+      "seq_id": "3d8",
+      "length": 58,
+      "seed": 4,
+      "arm": "rl",
+      "contacts_at_hours": {
+        "1": 15,
+        "2": 15,
+        "12": 17,
+        "24": 17
+      },
+      "valid_budget_result": true,
+      "reused": false,
+      "episode": 15025,
+      "updates": 15021,
+      "epsilon_rounded": 0.69,
+      "training_complete": false,
+      "latest_greedy_mean": 1,
+      "latest_greedy_completed_folds": 10,
+      "latest_greedy_attempted": 10
+    }
+  ],
+  "limits": [
+    "Remote original launch/result/event files and folds were not downloaded or re-audited locally.",
+    "Witness counts are checked records, not necessarily distinct conformations.",
+    "Epsilon values are transcribed rounded to three decimal places.",
+    "Full-budget Slurm runtimes and greedy timestamps remain in the original remote report; absent here means not transcribed."
+  ]
+}

@@ -1,0 +1,40 @@
+\documentclass[tikz,border=5pt]{standalone}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\definecolor{cpblue}{RGB}{30,70,110}
+\definecolor{rlorange}{RGB}{181,92,38}
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[width=14cm,height=6.4cm,ybar=2pt,bar width=14pt,
+ ymin=0,ymax=46,xtick={1,2,3,4,5,6,7,8},
+ xticklabels={3d1,3d2,3d3,3d4,3d5,3d6,3d7,3d8},
+ xlabel={Benchmark sequence},ylabel={Best contacts within 24 hours},
+ tick label style={font=\small},label style={font=\small},
+ ymajorgrids=true,grid style={gray!20},enlarge x limits=0.08,
+ legend style={at={(0.03,0.97)},anchor=north west,draw=none,font=\small},
+ clip=false]
+\addplot+[fill=cpblue!75,draw=cpblue,error bars/.cd,y dir=both,y explicit,error bar style={black}] coordinates {
+(1,11.00000000) +- (0,0.00000000)
+(2,13.00000000) +- (0,0.00000000)
+(3,9.00000000) +- (0,0.00000000)
+(4,18.00000000) +- (0,0.00000000)
+(5,34.00000000) +- (0,0.70710678)
+(6,31.00000000) +- (0,0.00000000)
+(7,33.40000000) +- (0,0.54772256)
+(8,41.40000000) +- (0,1.14017543)
+};
+\addlegendentry{CP-SAT}
+\addplot+[fill=rlorange!75,draw=rlorange,error bars/.cd,y dir=both,y explicit,error bar style={black}] coordinates {
+(1,11.00000000) +- (0,0.00000000)
+(2,13.00000000) +- (0,0.00000000)
+(3,6.40000000) +- (0,0.54772256)
+(4,10.80000000) +- (0,0.83666003)
+(5,17.00000000) +- (0,1.58113883)
+(6,15.80000000) +- (0,1.09544512)
+(7,14.60000000) +- (0,0.54772256)
+(8,17.60000000) +- (0,0.89442719)
+};
+\addlegendentry{Project attention DQN}
+\end{axis}
+\end{tikzpicture}
+\end{document}
