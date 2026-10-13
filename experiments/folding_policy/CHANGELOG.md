@@ -1,5 +1,31 @@
 # Experiment work log
 
+## 2026-10-13 — Saved-policy inference comparison
+
+Objective: reuse the completed two-hour allocation endpoints and compare their
+standalone search with fresh CP-SAT and randomized greedy searches. The user
+reported all 12 allocation jobs complete, 18 evaluated endpoints, and 1,634
+verified witness records without errors. Those are user-supplied cluster results;
+the new comparison has not yet run.
+
+- Added frozen checkpoint/data/source provenance checks and two independent
+  arrays covering 18 tasks, three seeds and all 16 validation strings.
+- Models receive 600 seconds per sequence; CP-SAT and greedy receive 1,050.
+  Reports show common 60/300/600-second inference points and the explicit N=16
+  amortized training-cost comparison. No model training or output repair occurs.
+- Retain actual fixed endpoints, source model/solver implementation and all
+  source results. Both final test sets remain excluded. No automatic follow-up.
+- Full suite: **83 tests passed in 27.420 seconds**, including 28 new inference
+  checks. Real short model, greedy and CP-SAT wiring checks passed. Independent
+  cross-review found no source-receipt or worker/report interface mismatch.
+- Frozen preparation and pending reporting passed using clearly labelled
+  synthetic receipt/checkpoint fixtures; these do not establish model quality.
+  Shell syntax, whitespace checks and all 18 dissertation file hashes passed.
+- New search allocation is up to 240 CPU-hours before overhead; scheduler
+  reservation ceiling is 264 CPU-hours. No jobs submitted from this workstation.
+
+Protocol and submission instructions: [INFERENCE_PLAN.md](INFERENCE_PLAN.md).
+
 ## 2026-10-13 — Two-hour shared-pretraining allocation pilot
 
 Objective: implement the authorized three-seed comparison of PatternBoost 120

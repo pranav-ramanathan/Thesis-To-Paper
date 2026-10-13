@@ -10,7 +10,46 @@ PatternBoost only, CP-SAT cloning, PatternBoost → RL and CP-SAT data → RL. I
 also runs greedy and CP-SAT validation controls. It does **not** evaluate the
 eight public benchmark strings or the new synthetic final test set.
 
-## Next pilot: two-hour training allocation
+## Next pilot: saved policies versus CP-SAT and greedy
+
+The [inference comparison](INFERENCE_PLAN.md) reuses all four final model
+conditions and all three seeds from the completed allocation pilot. It runs all
+16 validation strings with 10 minutes per model/sequence/seed, and 17.5 minutes
+for fresh CP-SAT and greedy searches. The same search curves support equal
+inference budgets and an N=16 comparison charging the models' two-hour training
+cost. No retraining or final-test evaluation is performed.
+
+```bash
+cd /data/home/ah23335/Thesis-To-Paper &&
+git pull --ff-only &&
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/inference_pilot.sh \
+  "$PWD/.cluster-runs/policy_allocation_2h_01" \
+  "$PWD/.cluster-runs/policy_inference_10m_01"
+```
+
+This copies and verifies the source checkpoints before submitting **12 model
+tasks and six baseline tasks in two independent arrays**, up to 18 concurrently.
+Each requests **4 EHC cores and 16 GiB**. With concurrent starts, allow up to
+**4 hours 40 minutes plus startup and queue time**. The scheduler limits are
+three hours for model tasks and five hours for baseline tasks. END/FAIL mail is
+requested, using the account destination or an explicit `HP_MAIL_USER`.
+The planned new search budget is 240 allocated CPU-hours before overhead;
+the scheduler reservation ceiling is 264 CPU-hours. Early CP proofs save time.
+Use a fresh destination; append `--dry-run` for preparation without submission.
+
+```bash
+squeue -u "$USER"
+sacct -X -j "$(cat .cluster-runs/policy_inference_10m_01/job_ids.txt)" --format=JobID,State,Elapsed,ExitCode
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/inference_report.sh "$PWD/.cluster-runs/policy_inference_10m_01"
+```
+
+After completion, save accounting separately:
+
+```bash
+sacct -j "$(cat .cluster-runs/policy_inference_10m_01/job_ids.txt)" --units=G --format=JobID,State,Elapsed,AllocCPUS,TotalCPU,MaxRSS,ReqMem > .cluster-runs/policy_inference_10m_01/accounting.txt
+```
+
+## Previous pilot: two-hour training allocation
 
 The [allocation pilot](ALLOCATION_PLAN.md) compares PatternBoost for two hours,
 PatternBoost 60 minutes → RL 60 minutes, PatternBoost 90 minutes → RL 30 minutes,

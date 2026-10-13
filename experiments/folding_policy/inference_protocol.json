@@ -1,0 +1,41 @@
+{
+  "stage": "validation-only-inference-comparison",
+  "arms": [
+    "patternboost",
+    "balanced",
+    "more_pretrain",
+    "rl_scratch",
+    "cp_sat",
+    "greedy"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "threads": 4,
+  "memory_gib": 16,
+  "model_seconds_per_sequence_seed": 600,
+  "baseline_seconds_per_sequence_seed": 1050,
+  "inference_timepoints_s": [
+    60,
+    300,
+    600
+  ],
+  "amortization_sequences": 16,
+  "training_lineage_seconds": 7200,
+  "arrays": {
+    "models": {
+      "array": "0-11%12",
+      "minutes": 180
+    },
+    "baselines": {
+      "array": "12-17%6",
+      "minutes": 300
+    }
+  },
+  "checkpoint_selection": "fixed_training_endpoints",
+  "new_training_enabled": false,
+  "final_test_enabled": false,
+  "automatic_extension": false
+}

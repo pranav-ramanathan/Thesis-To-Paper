@@ -3,6 +3,32 @@
 Date: 13 October 2026. These are disposable engineering checks, not scientific
 method-comparison results. Neither final test partition was evaluated.
 
+## Saved-policy inference comparison verification
+
+The package passes **83 tests in 27.420 seconds**, including 28 new tests for
+inference orchestration, execution and reporting. The new tests check immutable
+source/checkpoint copies, complete training receipts and shared-parent handoffs,
+fixed endpoint identity, package/CPU guards, independent Slurm arrays, partial
+submission preservation, bounded child failures and no source overwrites.
+
+Reporting checks independently recount contacts and reject invalid coordinates,
+changed checkpoint metadata and incorrect budgets. They distinguish missing
+folds from zero scores, preserve partial progress, keep later improvements and
+proofs out of earlier timepoints, and avoid attributing full-search fold counts
+to shorter prefixes. The 600 + 7,200/16 = 1,050 second accounting is tested.
+
+Real short CPU checks exercise model loading/inference (0.35 seconds), randomized
+greedy (0.2 seconds), and CP-SAT (2 seconds) on a validation string. These are
+wiring checks with disposable model states, not estimates of scientific quality
+or sustained performance. Frozen preparation and a report with all tasks pending
+also pass using synthetic source receipts and checkpoint bytes explicitly marked
+as test fixtures; no long training is simulated as scientific evidence.
+
+Both shell wrappers and the batch script pass Bash syntax checking. The original
+model, evaluation and solver implementations remain unchanged. All 18 dissertation
+file hashes match their pre-change values. No cluster job was submitted locally;
+the user submits from their authenticated Apocrita shell after pulling the code.
+
 ## Follow-up allocation pilot verification
 
 The full package now passes **55 tests in 24.237 seconds** using the documented
