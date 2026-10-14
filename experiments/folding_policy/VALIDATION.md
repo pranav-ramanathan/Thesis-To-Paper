@@ -1,5 +1,26 @@
 # Verification before the first HPC policy pilot
 
+## Frozen final comparison verification
+
+The final-study tests check immutable protocol/data/source freezing, the 55-task
+matrix, all eleven array submissions and corresponding-seed dependencies, resource
+accounting, deadline admission, partial submission preservation, refused retries,
+failed parents, child timeouts and held-out input membership.
+
+Training checks compare all four fine-tuning updates byte-for-byte with the
+screened implementations. They verify actor/Adam/RNG/elite restoration, frozen
+reference policies, scratch isolation, interruption receipts and rejected changed
+checkpoints. Reporting checks runtime provenance, exact elapsed coverage, delayed
+proofs, every saved prefix witness, missingness, separate test/public tables and
+aggregation across trained seeds rather than treating sequences as training seeds.
+
+A disposable integration runs real short parent/branch/scratch training, real
+model/greedy/CP-SAT inference and final reporting on eight-residue synthetic
+strings. All eight fixture evaluations complete and verify. Production training
+receipt validation rejects these shortened runs. No actual final-study sequence
+is evaluated by this check. Frozen preparation and all-pending reporting pass
+separately without training or search. Shell syntax checks pass.
+
 Date: 13 October 2026. These are disposable engineering checks, not scientific
 method-comparison results. Neither final test partition was evaluated.
 

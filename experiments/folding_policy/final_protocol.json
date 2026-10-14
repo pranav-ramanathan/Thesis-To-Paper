@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "stage": "final-frozen-policy-comparison",
+  "arms": [
+    "patternboost",
+    "grpo",
+    "dr_grpo",
+    "reinforce",
+    "dpo",
+    "scratch_grpo",
+    "scratch_dr_grpo",
+    "scratch_reinforce",
+    "cp_sat",
+    "greedy"
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "threads": 4,
+  "memory_gib": 16,
+  "model": {
+    "width": 64,
+    "heads": 4,
+    "layers": 2,
+    "dropout": 0.0
+  },
+  "dataset_seed": 20261013,
+  "parent_training_seconds": 7200,
+  "additional_training_seconds": 1800,
+  "training_lineage_seconds": 9000,
+  "parent_learning_rate": 0.0003,
+  "endpoint_learning_rate": 3e-05,
+  "evaluation_seconds_per_sequence_per_seed": 600,
+  "inference_timepoints_s": [
+    60,
+    300,
+    600
+  ],
+  "attempt_checkpoints": [
+    1024
+  ],
+  "array_concurrency": 5,
+  "maximum_concurrent_endpoint_jobs": 50,
+  "campaign_deadline_days": 10,
+  "slurm_minutes": {
+    "parent": 180,
+    "branch": 960,
+    "scratch": 1080,
+    "baseline": 960
+  },
+  "evaluation_splits": [
+    "test",
+    "benchmark"
+  ],
+  "checkpoint_selection": "fixed_training_endpoints",
+  "final_test_enabled": true,
+  "automatic_extension": false,
+  "fresh_training": true,
+  "inference_solver_repair": false,
+  "contrasts": [
+    [
+      "grpo",
+      "patternboost"
+    ],
+    [
+      "dr_grpo",
+      "patternboost"
+    ],
+    [
+      "reinforce",
+      "patternboost"
+    ],
+    [
+      "dpo",
+      "patternboost"
+    ],
+    [
+      "grpo",
+      "scratch_grpo"
+    ],
+    [
+      "dr_grpo",
+      "scratch_dr_grpo"
+    ],
+    [
+      "reinforce",
+      "scratch_reinforce"
+    ],
+    [
+      "patternboost",
+      "cp_sat"
+    ],
+    [
+      "patternboost",
+      "greedy"
+    ],
+    [
+      "grpo",
+      "cp_sat"
+    ],
+    [
+      "grpo",
+      "greedy"
+    ],
+    [
+      "dr_grpo",
+      "cp_sat"
+    ],
+    [
+      "dr_grpo",
+      "greedy"
+    ],
+    [
+      "reinforce",
+      "cp_sat"
+    ],
+    [
+      "reinforce",
+      "greedy"
+    ],
+    [
+      "dpo",
+      "cp_sat"
+    ],
+    [
+      "dpo",
+      "greedy"
+    ],
+    [
+      "scratch_grpo",
+      "cp_sat"
+    ],
+    [
+      "scratch_grpo",
+      "greedy"
+    ],
+    [
+      "scratch_dr_grpo",
+      "cp_sat"
+    ],
+    [
+      "scratch_dr_grpo",
+      "greedy"
+    ],
+    [
+      "scratch_reinforce",
+      "cp_sat"
+    ],
+    [
+      "scratch_reinforce",
+      "greedy"
+    ]
+  ]
+}

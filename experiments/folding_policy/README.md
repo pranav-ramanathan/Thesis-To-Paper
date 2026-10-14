@@ -1,16 +1,68 @@
 # PatternBoost → RL: standalone variable-length HP folding policy
 
-This package implements the validation pilot in [PLAN.md](PLAN.md). One small
+This package contains the validation pilots and frozen final comparison. One small
 Transformer is reused across pretraining and RL; at inference it generates folds
 without solver repair. It is separate from the historical per-sequence DQN
 campaign and does not modify its code or results.
 
-The pilot runs all five learned conditions with two seeds: RL from scratch,
+The initial pilot in [PLAN.md](PLAN.md) ran five learned conditions with two seeds: RL from scratch,
 PatternBoost only, CP-SAT cloning, PatternBoost → RL and CP-SAT data → RL. It
 also runs greedy and CP-SAT validation controls. It does **not** evaluate the
 eight public benchmark strings or the new synthetic final test set.
 
-## Next pilot: learning-rate controls and longer inference
+## Final comparison: five seeds and all methods
+
+The completed validation follow-up motivates the frozen [final protocol](FINAL_PLAN.md).
+Train fresh models and compare **PatternBoost-only; PatternBoost → GRPO,
+Dr. GRPO, REINFORCE and DPO; GRPO, Dr. GRPO and REINFORCE from scratch;
+CP-SAT; and randomized greedy**. Each learned method receives a full 2.5-hour
+training lineage. All methods receive ten minutes per sequence and seed.
+
+The **80 previously unevaluated synthetic sequences** are the primary test set.
+The eight public benchmark sequences appear in a separate table because their
+historical results have already been examined. Training uses only the 160 training
+sequences. Fixed endpoints prevent validation or test checkpoint selection.
+
+```bash
+cd /data/home/ah23335/Thesis-To-Paper &&
+git pull --ff-only &&
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/final_campaign.sh \
+  "$PWD/.cluster-runs/policy_final_01"
+```
+
+This submits **55 scheduler tasks in eleven arrays**: five shared parents and
+fifty method/seed endpoints. Each endpoint processes 88 sequences sequentially.
+Up to **50 endpoints run concurrently**, each with **four EHC cores and 16 GiB**.
+Each fine-tuning branch waits for its corresponding successful parent seed;
+scratch RL and classical search start independently.
+
+Allow about **17 hours 10 minutes plus startup, saving and queue time** at full
+availability. Planned new compute is **3,173.33 allocated CPU-hours**; the scheduler
+reservation ceiling is 3,380 CPU-hours. The absolute campaign deadline is ten
+days after preparation. There is no automatic extension or resubmission.
+END/FAIL/invalid-dependency email is requested per array; set `HP_MAIL_USER` for an
+explicit destination. Use a fresh directory. For a preview, append `--dry-run`
+using a different destination; that directory cannot later be submitted again.
+
+```bash
+squeue -u "$USER"
+sacct -X -j "$(cat .cluster-runs/policy_final_01/job_ids.txt)" --format=JobID,State,Elapsed,ExitCode
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/final_report.sh "$PWD/.cluster-runs/policy_final_01"
+```
+
+After completion, retain resource accounting:
+
+```bash
+sacct -j "$(cat .cluster-runs/policy_final_01/job_ids.txt)" --units=G --format=JobID,State,Elapsed,AllocCPUS,TotalCPU,MaxRSS,ReqMem > .cluster-runs/policy_final_01/accounting.txt
+```
+
+Reporting independently checks retained witnesses, so the full report can take
+several minutes and retains millions of attempted-fold records. Reports distinguish
+physical training from per-method lineage charges; they do not claim equal-total-
+cost superiority over the ten-minute classical runs. The original 24-hour DQN
+experiment remains a separate study.
+
+## Previous pilot: learning-rate controls and longer inference
 
 The [fine-tuning follow-up](FINETUNE_FOLLOWUP_PLAN.md) reuses all eighteen saved
 endpoints from the completed fine-tuning pilot. Only six tasks train: three

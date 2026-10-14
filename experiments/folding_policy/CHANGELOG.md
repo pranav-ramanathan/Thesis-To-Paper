@@ -1,5 +1,31 @@
 # Experiment work log
 
+## 2026-10-14 — Frozen final policy comparison
+
+The completed validation follow-up reported 24 tasks and 382,129 verified witness
+records without errors. The user approved a final comparison of all four
+PatternBoost fine-tuners, continued PatternBoost, three matched scratch RL
+controls, CP-SAT and randomized greedy.
+
+- Freeze five seeds, the existing architecture and train/test partition, and
+  fixed training endpoints. Fresh two-hour parents feed half-hour branches;
+  scratch RL receives 2.5 hours. Endpoint learning rates are fixed at `3e-5`.
+- Evaluate 80 synthetic test sequences and eight public benchmarks separately,
+  for ten minutes per method/seed/input. Report 60/300/600-second outcomes,
+  1,024-attempt diagnostics, length-transfer strata and seed-level contrasts.
+- Submit eleven arrays: 55 scheduler tasks, up to 50 concurrent endpoints, four
+  EHC cores and 16 GiB each. Parent dependencies match the seed. Planned compute
+  is 240 training + 2,933.33 inference = **3,173.33 allocated CPU-hours**.
+- Verify complete training lineage, runtime/source/data hashes and fold geometry;
+  preserve partial failures, negative differences and missing outcomes.
+- Local verification uses short synthetic fixtures. A real train-to-report test
+  covers parent, branch, scratch, model inference, greedy and CP-SAT. The frozen
+  55-job preparation and pending 100-split report also pass without search.
+- Final test folds remain unevaluated locally. The user submits on Apocrita.
+  Existing scientific results, manuscript and dissertation are preserved.
+
+Protocol and commands: [FINAL_PLAN.md](FINAL_PLAN.md), [README.md](README.md).
+
 ## 2026-10-14 — Fine-tuning controls and longer inference
 
 Objective: test whether a tenfold smaller learning rate explains part of the
