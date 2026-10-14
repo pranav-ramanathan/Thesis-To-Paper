@@ -1,5 +1,32 @@
 # Experiment work log
 
+## 2026-10-14 — Fine-tuning from shared PatternBoost parents
+
+Objective: screen continued PatternBoost, current GRPO, Dr. GRPO, REINFORCE with
+a frozen greedy-policy baseline, and DPO from the same saved two-hour parents.
+The completed inference pilot supplied by the user motivates this screen:
+PatternBoost remained stronger than the current hybrids on most sequence means.
+
+- Added a separate training module, preserving historical code and actor
+  architecture. Restore actor/Adam/RNG/elite state; freeze reference weights;
+  charge example generation, reference computations and diagnostics to training.
+- Freeze three parents and submit 15 half-hour branches plus three unchanged
+  parent evaluations, one array with up to 18 concurrent four-core tasks. Every
+  endpoint receives one minute on each of sixteen validation strings.
+- Independently verify fold witnesses and checkpoint provenance; report paired
+  changes against both parent and continued PatternBoost, retaining deterioration.
+  Missing or unfinished observations remain explicit.
+- This is a fixed-configuration screen with disclosed learning-rate differences,
+  not a matched tuning study or algorithm-superiority claim. Both final test sets
+  remain unevaluated. There is no automatic longer campaign.
+- All **123 tests pass**; the short production-architecture integration completed
+  all five objectives and parent inference, with **419 verified witness records
+  and zero errors**. These disposable checks have no scientific result status.
+- Planned new allocation is 49.2 CPU-hours before overhead; each task requests
+  four EHC cores, 16 GiB and 75 minutes. No job was submitted locally.
+
+Protocol and commands: [FINETUNE_PLAN.md](FINETUNE_PLAN.md), [README.md](README.md).
+
 ## 2026-10-13 — Saved-policy inference comparison
 
 Objective: reuse the completed two-hour allocation endpoints and compare their

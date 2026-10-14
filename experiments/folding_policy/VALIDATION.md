@@ -3,6 +3,43 @@
 Date: 13 October 2026. These are disposable engineering checks, not scientific
 method-comparison results. Neither final test partition was evaluated.
 
+## 14 October 2026 — Fine-tuning algorithm screen
+
+The complete package passes **123 tests in 31.940 seconds**, including 40 new
+checks for training objectives, parent provenance, scheduling, bounded failures,
+validation-only execution and independent result reporting. Shell syntax and
+`git diff --check` pass. No new dependency was installed.
+
+Numerical checks verify identical actor and Adam updates for the preserved GRPO
+reference; the Dr. GRPO and REINFORCE gradient formulas; DPO preference signs,
+masked likelihoods, ties and independently checked folds; and immutable frozen
+reference weights. Parent actor, optimizer moments, random states and elite pools
+are retained. Tests reject altered provenance, resources, software, budgets,
+checkpoint counters, late witnesses and test-set access, and preserve completed
+sequence results after a later subprocess failure.
+
+A real short integration used the production 64-wide/two-layer/four-head actor,
+a disposable **two-second** PatternBoost parent, **five seconds** for each of
+the five continuation methods, and **0.25 seconds** on each of the sixteen
+validation strings per endpoint. All five descendants and the unchanged parent
+completed, and the final independent report verified **419 witness records with
+zero errors**. These tiny runs check wiring and gradients, not learning quality,
+runtime scaling or the real two-hour source checkpoints on Apocrita. No synthetic
+short checkpoint is passed off as a completed two-hour training run.
+
+The first disposable integration invocation hit the macOS `/tmp` symlink because
+its test harness did not resolve the root path. Resolving the harness path fixed
+the check; production entry points already resolve their run directories.
+
+Independent reviews checked algorithm equations, legality masks, the frozen
+greedy-policy baseline, report metadata, and source/configuration compatibility.
+Diagnostics now label cumulative versus additional training timings and the
+different sequence mixtures in PatternBoost versus RL diagnostic batches.
+
+No cluster training has been submitted from this workstation. The prepared
+command submits one bounded array from the user's authenticated Apocrita shell.
+The historical runs, manuscript and dissertation are unchanged.
+
 ## Saved-policy inference comparison verification
 
 The package passes **83 tests in 27.420 seconds**, including 28 new tests for

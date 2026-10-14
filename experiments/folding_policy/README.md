@@ -10,7 +10,49 @@ PatternBoost only, CP-SAT cloning, PatternBoost → RL and CP-SAT data → RL. I
 also runs greedy and CP-SAT validation controls. It does **not** evaluate the
 eight public benchmark strings or the new synthetic final test set.
 
-## Next pilot: saved policies versus CP-SAT and greedy
+## Next pilot: fine-tuning the saved PatternBoost policies
+
+The [fine-tuning screen](FINETUNE_PLAN.md) starts from the same saved two-hour
+PatternBoost parent for each of three seeds. It compares another 30 minutes of
+PatternBoost, current GRPO-style training, Dr. GRPO, REINFORCE with a frozen
+greedy-policy baseline, and DPO. Three additional tasks evaluate the unchanged
+parents. All 18 endpoints receive 60 seconds on each of the 16 validation strings.
+
+```bash
+cd /data/home/ah23335/Thesis-To-Paper &&
+git pull --ff-only &&
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/finetune_pilot.sh \
+  "$PWD/.cluster-runs/policy_allocation_2h_01" \
+  "$PWD/.cluster-runs/policy_finetune_30m_01"
+```
+
+This submits **one array with up to 18 concurrent tasks**, each requesting
+**4 EHC cores, 16 GiB and 75 minutes**. Training tasks take about 46 minutes
+plus process startup and saving; parent-only tasks take about 16 minutes plus
+overhead. Queue time can extend campaign duration. END/FAIL email is requested;
+set `HP_MAIL_USER` if an explicit recipient is needed. The frozen preparation
+checks the source checkpoints, software and data. Use a fresh destination;
+append `--dry-run` to prepare without submitting.
+
+```bash
+squeue -u "$USER"
+sacct -X -j "$(cat .cluster-runs/policy_finetune_30m_01/job_ids.txt)" --format=JobID,State,Elapsed,ExitCode
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/finetune_report.sh "$PWD/.cluster-runs/policy_finetune_30m_01"
+```
+
+After completion, retain resource accounting:
+
+```bash
+sacct -j "$(cat .cluster-runs/policy_finetune_30m_01/job_ids.txt)" --units=G --format=JobID,State,Elapsed,AllocCPUS,TotalCPU,MaxRSS,ReqMem > .cluster-runs/policy_finetune_30m_01/accounting.txt
+```
+
+The new planned allocation is **49.2 CPU-hours** before overhead: 30 for training
+and 19.2 for evaluation. The existing pretraining is reused. This screens fixed
+configurations with different learning rates; a matched tuning study would be
+needed for algorithm-ranking claims. The policy architecture stays the same,
+inference uses no solver repair, and neither final test set is evaluated.
+
+## Previous pilot: saved policies versus CP-SAT and greedy
 
 The [inference comparison](INFERENCE_PLAN.md) reuses all four final model
 conditions and all three seeds from the completed allocation pilot. It runs all

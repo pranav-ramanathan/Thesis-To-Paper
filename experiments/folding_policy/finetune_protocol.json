@@ -1,0 +1,20 @@
+{
+  "stage": "validation-only-finetuning-screen",
+  "arms": ["patternboost", "grpo", "dr_grpo", "reinforce", "dpo"],
+  "seeds": [0, 1, 2],
+  "threads": 4,
+  "memory_gib": 16,
+  "model": {"width": 64, "heads": 4, "layers": 2, "dropout": 0.0},
+  "parent_training_seconds": 7200,
+  "additional_training_seconds": 1800,
+  "evaluation_seconds_per_sequence_per_seed": 60,
+  "learning_rates": {"patternboost": 0.0003, "grpo": 0.0003, "dr_grpo": 0.00003, "reinforce": 0.00003, "dpo": 0.00003, "parent": 0.0},
+  "dpo_beta": 0.1,
+  "array": "0-17%18",
+  "slurm_minutes": 75,
+  "checkpoint_selection": "fixed_training_endpoints",
+  "comparison": "fixed_configuration_screen_not_algorithm_ranking",
+  "learning_rate_tuning": false,
+  "final_test_enabled": false,
+  "automatic_extension": false
+}
