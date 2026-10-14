@@ -3,6 +3,46 @@
 Date: 13 October 2026. These are disposable engineering checks, not scientific
 method-comparison results. Neither final test partition was evaluated.
 
+## 14 October 2026 — Learning-rate controls and longer inference
+
+The complete package passes **158 tests in 38.353 seconds**, including 35 new
+follow-up checks. Tests cover immutable historical endpoints, the two original-
+parent learning-rate controls, exact attempted-fold prefixes including traps,
+deadline interruption, late-witness exclusion, CPU accounting, partial results,
+paired deterioration and validation-only provenance. Shell syntax and
+`git diff --check` pass. No historical training/model code or dependencies changed.
+
+A real production-architecture integration reused a disposable **two-second**
+parent and five-second descendants from the previous engineering check, trained
+both new lower-rate controls for **five seconds** each, and evaluated all eight
+endpoint types on all sixteen validation strings for **0.75 seconds** each.
+The first sampled batch matched the original sampler for each endpoint. A
+separate report integration independently checked **1,680 witness records**,
+including **1,019 complete ordered-prefix fold records**, with **zero errors**.
+The shortened attempt prefixes were 1, 4 and 8. The report harness bypassed only
+the production frozen-protocol loader to supply these explicitly tiny budgets;
+checkpoint, training-receipt, geometry and prefix checks remained active. These
+artifacts are marked engineering-only and do not represent scientific results.
+
+Artifacts: `/private/tmp/hp-followup-integration-01`, with test logs in
+`/tmp/hp-followup-full-tests.log` and `/tmp/hp-followup-report-integration.log`.
+Frozen preparation with the full production protocol also passed using synthetic
+receipt/checkpoint fixtures, and the copied standalone bundle generated an honest
+pending report with 24 tasks and zero completed results. This checks packaging,
+not the real cluster model files. Artifact: `/private/tmp/hp-followup-bundle-final-check`.
+
+Independent reviews checked launcher/worker/report interfaces, sampling order,
+fixed-count coverage and reused-versus-new training provenance. Ordered records
+are capped at the first 1,024 attempts, and coordinate JSON uses compact encoding.
+The report checks every recorded complete prefix witness, so reporting can take
+longer than the previous improvement-only report. It prints verification progress
+and records its own analysis time separately from inference. In-flight sequence
+snapshots remain on disk even when not yet incorporated into aggregate reports.
+
+No HPC job has been submitted from this workstation. The new scripts prepare
+24 concurrent-capable tasks with only six new training branches. Historical
+results, manuscript files and dissertation remain unchanged.
+
 ## 14 October 2026 — Fine-tuning algorithm screen
 
 The complete package passes **123 tests in 31.940 seconds**, including 40 new

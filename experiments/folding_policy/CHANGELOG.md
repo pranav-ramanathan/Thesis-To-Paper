@@ -1,5 +1,35 @@
 # Experiment work log
 
+## 2026-10-14 — Fine-tuning controls and longer inference
+
+Objective: test whether a tenfold smaller learning rate explains part of the
+fine-tuning pilot's gains, and separate quality per attempt from sampling speed.
+The user's completed pilot reported 18 tasks and 1,804 checked witness records
+without errors. Dr. GRPO, REINFORCE and DPO each beat continued PatternBoost on
+eleven validation sequence means and tied on five; these are screening results.
+
+- Reuse all eighteen saved endpoints. Train only three PatternBoost and three
+  GRPO controls for thirty minutes at `3e-5`, from their original two-hour parents.
+- Evaluate all 24 endpoints for ten minutes on each of sixteen validation
+  strings. Compare 60/300/600-second search outcomes and exact ordered prefixes
+  of 128/512/1,024 attempts, including traps. Check every recorded complete prefix
+  fold independently and expose missing or interrupted prefixes.
+- Preserve source code, data, parent and endpoint receipts, runtime versions,
+  Adam/RNG/elite handoffs and fixed checkpoint identity. Record CPU/affinity and
+  verification/write overhead. Reports retain negative paired differences.
+- One array allows 24 concurrent tasks, each four EHC cores, 16 GiB and four
+  hours. Expected longest compute path is about 3 hours 10 minutes plus overhead.
+  New planned allocation: 12 training + 256 inference = **268 CPU-hours**.
+- All **158 tests pass**. The tiny production-architecture integration verified
+  **1,680 witness records with zero errors** across eight endpoint types; those
+  disposable runs have no scientific-result status. Frozen preparation and
+  pending reporting pass separately using clearly labelled protocol fixtures.
+- No jobs submitted locally, no final-test evaluation or automatic extension.
+  Prior code/results and the dissertation remain unchanged.
+
+Protocol and commands: [FINETUNE_FOLLOWUP_PLAN.md](FINETUNE_FOLLOWUP_PLAN.md),
+[README.md](README.md).
+
 ## 2026-10-14 — Fine-tuning from shared PatternBoost parents
 
 Objective: screen continued PatternBoost, current GRPO, Dr. GRPO, REINFORCE with

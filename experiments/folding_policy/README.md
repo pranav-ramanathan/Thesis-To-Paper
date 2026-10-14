@@ -10,7 +10,60 @@ PatternBoost only, CP-SAT cloning, PatternBoost → RL and CP-SAT data → RL. I
 also runs greedy and CP-SAT validation controls. It does **not** evaluate the
 eight public benchmark strings or the new synthetic final test set.
 
-## Next pilot: fine-tuning the saved PatternBoost policies
+## Next pilot: learning-rate controls and longer inference
+
+The [fine-tuning follow-up](FINETUNE_FOLLOWUP_PLAN.md) reuses all eighteen saved
+endpoints from the completed fine-tuning pilot. Only six tasks train: three
+PatternBoost controls and three GRPO controls, each starting from its original
+two-hour parent for another thirty minutes at learning rate `3e-5`.
+
+All 24 endpoints receive ten minutes on each of the sixteen validation strings.
+The report compares best contacts at one, five and ten minutes, and after the
+first 128, 512 and 1,024 attempted folds, including traps. This checks both the
+learning-rate difference and the observed sampling-speed difference.
+
+```bash
+cd /data/home/ah23335/Thesis-To-Paper &&
+git pull --ff-only &&
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/finetune_followup_pilot.sh \
+  "$PWD/.cluster-runs/policy_finetune_30m_01" \
+  "$PWD/.cluster-runs/policy_finetune_followup_01"
+```
+
+One array allows **up to 24 concurrent tasks**, each with **4 EHC cores, 16 GiB
+and a four-hour scheduler limit**. There are no dependencies. With concurrent
+starts, allow about **3 hours 10 minutes plus startup and saving**, and any queue
+time. Reused-endpoint tasks take about 2 hours 40 minutes plus overhead. New
+planned compute is **268 allocated CPU-hours**: 12 training and 256 inference.
+The scheduler reservation ceiling is 384 CPU-hours. END/FAIL email is requested;
+set `HP_MAIL_USER` to specify a destination. Use a fresh output directory, or
+append `--dry-run` to prepare without submitting.
+
+```bash
+squeue -u "$USER"
+sacct -X -j "$(cat .cluster-runs/policy_finetune_followup_01/job_ids.txt)" --format=JobID,State,Elapsed,ExitCode
+HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/finetune_followup_report.sh "$PWD/.cluster-runs/policy_finetune_followup_01"
+```
+
+After completion, retain resource accounting:
+
+```bash
+sacct -j "$(cat .cluster-runs/policy_finetune_followup_01/job_ids.txt)" --units=G --format=JobID,State,Elapsed,AllocCPUS,TotalCPU,MaxRSS,ReqMem > .cluster-runs/policy_finetune_followup_01/accounting.txt
+```
+
+Only validation sequences are evaluated. Saved endpoints are frozen and copied;
+new controls preserve parent weights, Adam moments, random states and elite pools.
+No solver repair, final-test access, automatic extension or checkpoint selection
+occurs. Existing scientific results are preserved.
+
+The report independently checks each recorded complete fold among the first
+1,024 attempts, so it can take several minutes. It prints progress after every
+six evaluated tasks. CPU usage, affinity and inference verification/write overhead
+are available in `throughput.csv` and `analysis.json`; report analysis time is
+recorded separately. In-flight sequence snapshots are retained under each task's
+`sequences` directory until the aggregate report can include the finished entry.
+
+## Previous pilot: fine-tuning the saved PatternBoost policies
 
 The [fine-tuning screen](FINETUNE_PLAN.md) starts from the same saved two-hour
 PatternBoost parent for each of three seeds. It compares another 30 minutes of
