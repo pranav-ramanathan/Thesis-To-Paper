@@ -8,9 +8,10 @@ import sys
 import tempfile
 import types
 import unittest
+import weakref
 from unittest.mock import patch
 
-from final_report import summarize
+from final_report import compact_verified_row, summarize
 from finetune_followup_evaluate import prefix_snapshot
 
 OPEN = [[0, 0, 0], [1, 0, 0], [2, 0, 0], [2, 1, 0]]
@@ -304,6 +305,78 @@ class FinalReportTests(unittest.TestCase):
             self.assertEqual(result['errors'], [])
             self.assertTrue(all(row['hydrophobic_fraction'] == 1 for row in result['summary']))
             self.assertFalse(any(row['stratum'].startswith('h_fraction') for row in result['seed_macros']))
+
+    def test_checked_1024_attempt_payloads_are_released_before_next_task_load(self):
+        """A growing campaign must not retain previous tasks' raw fold arrays."""
+        class TrackedAttempts(list):
+            pass
+
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            manifest, endpoints = fixture(run)
+            manifest['attempt_checkpoints'] = [1024]
+            for task in manifest['evaluation_tasks']:
+                if task['method'] != 'model':
+                    continue
+                path = task_directory(run, task) / 'evaluation.json'
+                payload = json.loads(path.read_text())
+                for row in payload['results']:
+                    attempts = [{'attempt_index': index, 'seconds': .2 + index / 10,
+                                 'status': 'complete', 'contacts': row['best_contacts'],
+                                 'positions': copy.deepcopy(row['best_positions'])}
+                                for index in range(1, 1025)]
+                    row.update(attempt_checkpoints=[1024], ordered_attempts=attempts,
+                               attempt_prefixes=[prefix_snapshot(attempts, 1024, 600)],
+                               attempted_folds=1024, generated_complete_folds=1024)
+                    row['curve'][0]['seconds'] = attempts[0]['seconds']
+                write(path, payload)
+            del payload, row, attempts
+
+            original_loads = json.loads
+            references = []
+            task_loads = []
+
+            def tracked_loads(*args, **kwargs):
+                parsed = original_loads(*args, **kwargs)
+                if isinstance(parsed, dict) and parsed.get('kind') == 'final_policy_evaluation':
+                    # Check before handing the next payload to the reporter:
+                    # old locals and retained verified rows must both release it.
+                    self.assertTrue(all(reference() is None for reference in references),
+                                    'Previously verified raw attempt arrays remain alive')
+                    task_loads.append(parsed['arm'])
+                    for row in parsed['results']:
+                        if 'ordered_attempts' in row:
+                            row['ordered_attempts'] = TrackedAttempts(row['ordered_attempts'])
+                            references.append(weakref.ref(row['ordered_attempts']))
+                return parsed
+
+            with patch('final_report.json.loads', side_effect=tracked_loads):
+                result = self.report(run, manifest, endpoints)
+            self.assertEqual(len(task_loads), 20)
+            self.assertEqual(len(references), 18)
+            self.assertTrue(all(reference() is None for reference in references))
+            self.assertEqual(result['verified_witness_records'], 18 * 1024 + 30 * 2)
+            self.assertEqual(result['complete_tasks'], 20)
+
+    def test_compaction_preserves_all_scientific_report_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            manifest, endpoints = fixture(run)
+            # Compare the optimized report with retaining the original checked
+            # rows, covering timings, prefixes, bounds, zero scores and costs.
+            with patch('final_report.compact_verified_row', side_effect=lambda row: row):
+                untrimmed = self.report(run, manifest, endpoints)
+            compact = self.report(run, manifest, endpoints)
+            untrimmed.pop('report_verification_seconds')
+            compact.pop('report_verification_seconds')
+            self.assertEqual(compact, untrimmed)
+            task = manifest['evaluation_tasks'][0]
+            row = json.loads((task_directory(run, task) / 'evaluation.json').read_text())['results'][0]
+            retained = compact_verified_row(row)
+            self.assertNotIn('ordered_attempts', retained)
+            self.assertNotIn('best_positions', retained)
+            self.assertNotIn('attempt_prefixes', retained)
+            self.assertTrue(all('positions' not in point for point in retained['curve']))
 
 
 if __name__ == '__main__':

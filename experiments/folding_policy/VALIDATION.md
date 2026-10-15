@@ -1,5 +1,21 @@
 # Verification before the first HPC policy pilot
 
+## 15 October 2026 — Final-report memory repair
+
+All **14 final-report and integration tests pass in 6.998 seconds**. The new
+retention regression checks 18,492 witness records and proves that previously
+checked 1,024-attempt coordinate arrays are released before the next evaluation
+payload is loaded. A separate equivalence test compares every analysis JSON
+value against untrimmed retention, excluding only measured report runtime.
+Existing checks still reject corrupted witnesses, provenance mismatches and late
+proofs, while preserving missing and partial results. The real small synthetic
+train/search/report integration also passes. Shell syntax and `git diff --check`
+pass. No final-study sequence is evaluated by these engineering checks.
+
+The analysis-only Slurm wrapper requests one EHC core, 8 GiB and a two-hour
+maximum. Actual report-job memory use remains to be measured on Apocrita. The
+original `Killed` output does not by itself prove an out-of-memory termination.
+
 ## Frozen final comparison verification
 
 The final-study tests check immutable protocol/data/source freezing, the 55-task

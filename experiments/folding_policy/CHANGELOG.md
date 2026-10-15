@@ -1,5 +1,21 @@
 # Experiment work log
 
+## 2026-10-15 — Bound final-report memory and schedule analysis
+
+The final report process was killed after checking 885,786 witness records.
+Inspection found that it retained every checked ordered-prefix coordinate array
+across evaluation tasks. This explains growing memory use; the shell's `Killed`
+message alone does not establish the operating system's reason for termination.
+
+- Release raw fold arrays after independent verification and before reading the
+  next evaluation file. Retain compact timing, score, bound and count summaries.
+- Verify retained report values against the prior behavior and check that all
+  earlier tasks' 1,024-attempt arrays are released before loading another task.
+- Add an analysis-only Slurm wrapper requesting one EHC core, 8 GiB and at most
+  two hours. Update collection commands to run full verification on a compute node.
+- Preserve experiment outputs, frozen bundles, scoring and missingness rules.
+  The separate failed CP-SAT seed still requires its error log for diagnosis.
+
 ## 2026-10-14 — Frozen final policy comparison
 
 The completed validation follow-up reported 24 tasks and 382,129 verified witness

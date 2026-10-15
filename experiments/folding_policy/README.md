@@ -47,7 +47,6 @@ using a different destination; that directory cannot later be submitted again.
 ```bash
 squeue -u "$USER"
 sacct -X -j "$(cat .cluster-runs/policy_final_01/job_ids.txt)" --format=JobID,State,Elapsed,ExitCode
-HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/final_report.sh "$PWD/.cluster-runs/policy_final_01"
 ```
 
 After completion, retain resource accounting:
@@ -56,8 +55,25 @@ After completion, retain resource accounting:
 sacct -j "$(cat .cluster-runs/policy_final_01/job_ids.txt)" --units=G --format=JobID,State,Elapsed,AllocCPUS,TotalCPU,MaxRSS,ReqMem > .cluster-runs/policy_final_01/accounting.txt
 ```
 
-Reporting independently checks retained witnesses, so the full report can take
-several minutes and retains millions of attempted-fold records. Reports distinguish
+Generate the full report in a separate compute job after pulling the latest
+reporting code. This only verifies saved results and writes analysis files:
+
+```bash
+git pull --ff-only &&
+sbatch --output="$PWD/.cluster-runs/policy_final_01/report-%j.out" \
+  --error="$PWD/.cluster-runs/policy_final_01/report-%j.err" \
+  experiments/folding_policy/final_report.sbatch "$PWD/.cluster-runs/policy_final_01"
+```
+
+This reporting job requests one EHC core, 8 GiB RAM and a two-hour maximum. It
+checks millions of saved fold witnesses, releasing their coordinates after
+verification. Memory is bounded by one evaluation JSON file plus compact report
+tables. Training, inference budgets and frozen campaign files are unchanged.
+After the reporting job finishes, read `.cluster-runs/policy_final_01/report.md`.
+The job's `report-JOBID.out` log contains progress and the resulting report;
+`report-JOBID.err` contains errors. Reporting costs are separate from inference.
+
+Reports distinguish
 physical training from per-method lineage charges; they do not claim equal-total-
 cost superiority over the ten-minute classical runs. The original 24-hour DQN
 experiment remains a separate study.

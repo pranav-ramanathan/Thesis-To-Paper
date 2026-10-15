@@ -217,6 +217,26 @@ def training_accounting(run, manifest):
     return rows, errors
 
 
+def compact_verified_row(row):
+    """Retain report inputs only after every raw witness has been checked.
+
+    Ordered attempts can contain 1,024 full coordinate arrays per sequence.
+    Keeping those arrays for the entire campaign makes report memory grow with
+    every sampled prefix. Timed curves need only the verified score and time;
+    their coordinates and the separately checked prefix witnesses stay on disk.
+    """
+    fields = ('elapsed_s', 'generated_complete_folds', 'attempted_folds',
+              'solver_status', 'bound', 'bound_recorded_s', 'bound_scope')
+    result = {key: row.get(key) for key in fields}
+    result['curve'] = [{key: point[key] for key in ('seconds', 'contacts', 'attempt_index')
+                        if key in point} for point in row['curve']]
+    resources = row.get('resource_usage', {})
+    result['resource_usage'] = {key: resources.get(key) for key in
+                               ('hostname', 'process_cpu_s', 'process_cpu_per_wall',
+                                'verification_s', 'snapshot_write_s')}
+    return result
+
+
 def summarize(directory):
     from final_launch import task_directory, verify, verified_endpoint
     start = time.monotonic()
@@ -240,6 +260,7 @@ def summarize(directory):
         path = folder / 'evaluation.json'
         if not path.exists():
             continue
+        payload = row = staged = None
         try:
             payload = json.loads(path.read_text())
             launch = json.loads((folder / 'launch.json').read_text())
@@ -253,7 +274,7 @@ def summarize(directory):
                 endpoint = endpoints[key]
             validate_payload(payload, manifest, task, endpoint)
             seen, staged = set(), []
-            for row in payload['results']:
+            for row_index, row in enumerate(payload['results']):
                 seq_id = row.get('id')
                 if seq_id not in task['sequence_ids'] or seq_id in seen:
                     raise ValueError('Unexpected or duplicate final sequence')
@@ -266,8 +287,11 @@ def summarize(directory):
                         raise ValueError('Complete model evaluation contains an unfinished sequence')
                     prefixes, prefix_witnesses = verify_attempts(row, source, manifest['attempt_checkpoints'])
                     verify_resources(row)
-                staged.append((seq_id, row, checked, prefixes))
+                staged.append((seq_id, compact_verified_row(row), checked, prefixes))
                 witnesses += checked['witnesses'] + prefix_witnesses
+                # Release checked coordinate-heavy rows while processing this
+                # task, rather than retaining them in either cache or payload.
+                payload['results'][row_index] = None
             if payload['status'] == 'complete' and (seen != set(task['sequence_ids'])
                     or any(not checked['complete_budget'] for _, _, checked, _ in staged)):
                 raise ValueError('Complete evaluation lacks every requested sequence and full budget or timely proof')
@@ -283,6 +307,10 @@ def summarize(directory):
         except (ValueError, KeyError, TypeError, OSError) as exc:
             state.update(status='verification_failed', error=str(exc))
             errors.append(f'{path}: {exc}')
+        finally:
+            # In particular, free the previous JSON before parsing the next one.
+            # This also releases a partially checked payload on verification errors.
+            payload = row = staged = None
         if time.monotonic() - last_progress >= 30:
             print(json.dumps({'verified_evaluation_tasks_so_far': len(states),
                               'planned_evaluation_tasks': len(tasks),

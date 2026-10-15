@@ -253,16 +253,27 @@ sacct -X -j "$(cat .cluster-runs/policy_final_01/job_ids.txt)" \
   --format=JobID,State,Elapsed,ExitCode
 ```
 
-Collect accounting and generate the independently checked report:
+Collect accounting and submit a separate job for independently checking the
+saved results and generating the report:
 
 ```bash
 cd /data/home/ah23335/Thesis-To-Paper &&
+git pull --ff-only &&
 sacct -j "$(cat .cluster-runs/policy_final_01/job_ids.txt)" --units=G \
   --format=JobID,State,Elapsed,AllocCPUS,TotalCPU,MaxRSS,ReqMem \
   > .cluster-runs/policy_final_01/accounting.txt &&
-HP_PYTHON_MODULE=python/3.11.7-gcc-12.2.0 bash experiments/folding_policy/final_report.sh \
+sbatch --output="$PWD/.cluster-runs/policy_final_01/report-%j.out" \
+  --error="$PWD/.cluster-runs/policy_final_01/report-%j.err" \
+  experiments/folding_policy/final_report.sbatch \
   "$PWD/.cluster-runs/policy_final_01"
 ```
+
+The reporting job requests one EHC core, 8 GiB and a two-hour maximum. It uses
+the current reporter to verify the existing frozen campaign, without retraining,
+new search or changes to its saved experiment files. Raw coordinates are released
+after verification; compact verified summaries remain for aggregation. After
+completion, read `.cluster-runs/policy_final_01/report.md`. Reporting resource
+use is separate from the frozen training and inference budgets.
 
 Saved report status is not a live Slurm query. Reading a partial report does not
 authorize tuning, checkpoint selection or extensions against observed test
