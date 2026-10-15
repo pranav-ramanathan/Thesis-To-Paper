@@ -39,6 +39,8 @@ def write(path, value):
 
 def imports(source):
     # The copied runner uses the campaign's original verification and runtime code.
+    sys.dont_write_bytecode = True
+    os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
     sys.path.insert(0, str(Path(source) / 'bundle/folding_policy'))
 
 
