@@ -237,11 +237,20 @@ def compact_verified_row(row):
     return result
 
 
-def summarize(directory):
+def summarize(directory, recovery_directory=None):
     from final_launch import task_directory, verify, verified_endpoint
     start = time.monotonic()
     run = Path(directory).resolve()
     manifest = verify(run)
+    recovery = None
+    output_directory = run
+    if recovery_directory is not None:
+        from final_recovery import load_recovery_overlay
+        recovery = load_recovery_overlay(run, Path(recovery_directory).resolve(), manifest)
+        output_directory = Path(recovery['output_directory']).resolve()
+        if output_directory == run or run in output_directory.parents:
+            raise ValueError('Recovery reports must be outside the original campaign directory')
+        output_directory.mkdir(parents=True, exist_ok=True)
     data = json.loads((run / 'data.json').read_text())
     sources = {(split, row['id']): row for split in ('test', 'benchmark') for row in data[split]}
     tasks = manifest['evaluation_tasks']
@@ -258,12 +267,21 @@ def summarize(directory):
                  'planned_sequences': len(task['sequence_ids']), 'error': None}
         states.append(state)
         path = folder / 'evaluation.json'
-        if not path.exists():
+        recovered_task = recovery is not None and task['task'] in recovery['payloads']
+        if not path.exists() and not recovered_task:
             continue
         payload = row = staged = None
         try:
-            payload = json.loads(path.read_text())
-            launch = json.loads((folder / 'launch.json').read_text())
+            if recovered_task:
+                # The recovery helper checks immutable source hashes and all
+                # replacement receipts; the normal scientific checks still run
+                # below. Pop payloads so large raw arrays cannot be retained.
+                payload = recovery['payloads'].pop(task['task'])
+                launch = recovery['launches'].pop(task['task'])
+                state['recovery_overlay'] = True
+            else:
+                payload = json.loads(path.read_text())
+                launch = json.loads((folder / 'launch.json').read_text())
             validate_launch(launch, payload, manifest, task)
             state['launch_status'] = launch['status']
             endpoint = None
@@ -378,20 +396,31 @@ def summarize(directory):
                                    'total_seconds_per_sequence': lineage_seconds / n + max(manifest['inference_timepoints_s'])}
                                   for n in (1, 8, 80, 88, 1000)],
     }
+    if recovery is not None:
+        provenance = recovery['provenance']
+        costs['recovery'] = {
+            key: provenance[key] for key in (
+                'planned_recovery_allocated_cpu_hours',
+                'verified_recovery_allocated_cpu_hours',
+                'excluded_original_attempt_allocated_cpu_hours',
+            )
+        }
     output = {'schema': 1, 'kind': 'final_policy_analysis', 'complete_tasks': sum(s['status'] == 'complete' for s in states),
               'planned_tasks': len(tasks), 'verified_witness_records': witnesses, 'errors': errors,
               'tasks': states, 'training': training, 'timepoints': points, 'summary': summary, 'seed_macros': macros,
               'macro_summary': macro_summary, 'paired': paired, 'seed_pairs': seed_pairs,
               'throughput': throughput, 'costs': costs,
               'report_verification_seconds': time.monotonic() - start}
-    (run / 'analysis.json').write_text(json.dumps(output, indent=2, allow_nan=False) + '\n')
+    if recovery is not None:
+        output['recovery'] = recovery['provenance']
+    (output_directory / 'analysis.json').write_text(json.dumps(output, indent=2, allow_nan=False) + '\n')
     for name, rows in [('summary', summary), ('training', training), ('timepoints', points), ('seed_macros', macros),
                        ('macro_summary', macro_summary), ('paired', paired), ('seed_pairs', seed_pairs),
                        ('throughput', throughput)]:
-        write_csv(run / f'{name}.csv', rows, list(rows[0]) if rows else [])
-    write_csv(run / 'curves.csv', curves, ['split', 'id', 'arm', 'seed', 'seconds', 'contacts', 'attempt_index'])
-    _write_markdown(run, manifest, data, output)
-    print(json.dumps({'report': str(run / 'report.md'), 'complete_tasks': output['complete_tasks'],
+        write_csv(output_directory / f'{name}.csv', rows, list(rows[0]) if rows else [])
+    write_csv(output_directory / 'curves.csv', curves, ['split', 'id', 'arm', 'seed', 'seconds', 'contacts', 'attempt_index'])
+    _write_markdown(output_directory, manifest, data, output)
+    print(json.dumps({'report': str(output_directory / 'report.md'), 'complete_tasks': output['complete_tasks'],
                       'planned_tasks': len(tasks), 'verified_witness_records': witnesses, 'errors': errors}))
     if errors:
         raise SystemExit(1)
@@ -407,6 +436,11 @@ def _write_markdown(run, manifest, data, result):
              'All learned endpoints use the same architecture and 2.5-hour training lineage. PatternBoost branches share each seed\'s two-hour parent; scratch policies train for 2.5 hours. Fixed endpoints are evaluated without solver repair or test-based checkpoint selection.', '',
              f'Primary results are best valid contacts within {primary:g} seconds per sequence and seed, including setup and model loading. Means and sample SD use {len(seeds)} planned independent trained seeds. Brackets show valid/complete/planned counts when incomplete; missing folds remain missing and genuine zero scores remain zero.', '',
              'The independent training replication is the seed. Multiple sequences, sampled folds and inference timepoints do not create extra training replications. All 1/5/10-minute observations, fixed-attempt diagnostics, per-seed values, bounds and incomplete progress are retained in analysis.json and the CSV files.', '']
+    if result.get('recovery') is not None:
+        recovery = result['recovery']
+        lines += ['## Documented CP-SAT recovery', '',
+                  f"This report combines {recovery['reused_sequence_count']} unchanged, complete source sequence evaluations with {recovery['fresh_sequence_count']} fresh recovery evaluations for the interrupted CP-SAT seed. Original campaign files and the original incomplete report remain unchanged. Source hashes and per-sequence recovery provenance are retained in analysis.json.", '',
+                  'The original short search is excluded and its score is never pooled with its replacement. Replacement and previously unstarted sequences use fresh full-budget searches with the original frozen worker and settings. Every recovered result passes the same independent witness, elapsed-budget, bound and proof checks as the original evaluations.', '']
     for split, title in [('test', 'Held-out synthetic test sequences'), ('benchmark', 'Previously inspected public benchmarks')]:
         lines += [f'## {title}', '']
         if split == 'benchmark':
@@ -449,6 +483,11 @@ def _write_markdown(run, manifest, data, result):
               '|---:|---:|---:|---:|']
     for row in costs['amortization_scenarios']:
         lines.append(f"| {row['future_sequences']} | {row['training_seconds_per_sequence']:.2f} | {row['inference_seconds']:g} | {row['total_seconds_per_sequence']:.2f} |")
+    if result.get('recovery') is not None:
+        recovery_costs = costs['recovery']
+        lines += ['',
+                  f"Recovery planned an additional {recovery_costs['planned_recovery_allocated_cpu_hours']:.3f} allocated CPU-hours of search; verified recovery search consumed {recovery_costs['verified_recovery_allocated_cpu_hours']:.3f}. These fresh results are already included in verified complete inference above and must not be counted twice. The {result['recovery']['reused_sequence_count']} reused sequence evaluations consumed original campaign compute and were not rerun.", '',
+                  f"The excluded original short attempt consumed {recovery_costs['excluded_original_attempt_allocated_cpu_hours']:.6f} allocated CPU-hours, reported separately from complete-result inference. Original planned inference remains the frozen campaign allocation; recovery overhead is additional physical consumption. Slurm accounting remains the source for launch overhead and actual CPU utilization."]
     lines += ['', '## Physical training segment status', '',
               'Each shared parent appears once. Incomplete or interrupted training is not charged as verified completed training; Slurm accounting still records any resources it consumed.', '',
               '| Task | Method | Seed | Status | Planned seconds | Verified completed seconds | Error |',
@@ -469,7 +508,10 @@ def _write_markdown(run, manifest, data, result):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('directory', type=Path)
-    summarize(parser.parse_args().directory)
+    parser.add_argument('--recovery', type=Path,
+                        help='Verify a complete recovery sidecar and write its report separately')
+    args = parser.parse_args()
+    summarize(args.directory, args.recovery)
 
 
 if __name__ == '__main__':

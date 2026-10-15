@@ -1,5 +1,24 @@
 # Verification before the first HPC policy pilot
 
+## 15 October 2026 — Separate CP-SAT recovery
+
+The complete package passes **198 tests in 47.523 seconds**. The subsequently
+expanded recovery suite passes **12 tests**, including execution/submission
+failure paths. Synthetic four-residue fixtures exercise 75 preserved source
+results and exactly 13 fresh recovery cells. Checks cover immutable source and
+plan hashes, invalid geometry, unchanged strict budget acceptance, missing cells,
+and replacement of a higher-scoring short attempt by a lower-scoring fresh
+result without pooling. The real report overlay writes separate artifacts and
+leaves all source file hashes unchanged.
+
+Runner tests confirm invocation of the original frozen worker with the original
+task, seed and input, using a new output path. They reject repeated attempts,
+record short fresh searches as failures, preserve uncertain submission responses,
+and check the single 13-cell array and saved job ID. Reporting tests retain
+unchanged default behavior and separate new search cost from reused computation.
+Shell syntax and `git diff --check` pass. These checks use synthetic fixtures and
+mocked cluster processes; no study searches or HPC submissions occur locally.
+
 ## 15 October 2026 — Final-report memory repair
 
 All **14 final-report and integration tests pass in 6.998 seconds**. The new

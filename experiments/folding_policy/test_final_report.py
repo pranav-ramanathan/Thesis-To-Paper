@@ -102,7 +102,7 @@ def fixture(run):
 
 
 class FinalReportTests(unittest.TestCase):
-    def report(self, run, manifest, endpoints, endpoint_error=None):
+    def report(self, run, manifest, endpoints, endpoint_error=None, recovery_directory=None):
         def endpoint(_, task):
             if endpoint_error:
                 raise ValueError(endpoint_error)
@@ -112,7 +112,107 @@ class FinalReportTests(unittest.TestCase):
                                        training_directory=lambda root, task: Path(root) / 'training' / str(task['task']),
                                        verified_training=lambda root, task, manifest: endpoints[task['task']])
         with patch.dict(sys.modules, {'final_launch': module}), contextlib.redirect_stdout(io.StringIO()):
-            return summarize(run)
+            return summarize(run, recovery_directory)
+
+    def recovery_fixture(self, run, manifest, recovery_directory):
+        tasks = [t for t in manifest['evaluation_tasks'] if t['arm'] == 'cp_sat' and t['seed'] == 1]
+        payloads, launches = {}, {}
+        for task in tasks:
+            folder = task_directory(run, task)
+            payloads[task['task']] = json.loads((folder / 'evaluation.json').read_text())
+            launches[task['task']] = json.loads((folder / 'launch.json').read_text())
+        test_task, benchmark_task = tasks
+        original = copy.deepcopy(payloads[test_task['task']])
+        original.update(status='failed', results=original['results'][:1], error='Search returned early')
+        write(task_directory(run, test_task) / 'evaluation.json', original)
+        launch = copy.deepcopy(launches[test_task['task']])
+        launch['status'] = 'failed'
+        write(task_directory(run, test_task) / 'launch.json', launch)
+        (task_directory(run, benchmark_task) / 'evaluation.json').unlink()
+        (task_directory(run, benchmark_task) / 'launch.json').unlink()
+        # Deliberately let the replacement have fewer contacts than an excluded
+        # short attempt would have scored: the reporter must not pool results.
+        row = payloads[test_task['task']]['results'][1]
+        row.update(best_contacts=0, best_positions=copy.deepcopy(OPEN),
+                   curve=[{'seconds': 2, 'contacts': 0, 'positions': copy.deepcopy(OPEN)}])
+        provenance = {'source_directory': str(run), 'source_hashes': {'campaign.json': 'frozen-hash'},
+                      'reused_sequence_count': 1, 'fresh_sequence_count': 2,
+                      'replaced_sequence_ids': ['test_001'],
+                      'planned_recovery_allocated_cpu_hours': 1200 * 4 / 3600,
+                      'verified_recovery_allocated_cpu_hours': 1200.02 * 4 / 3600,
+                      'excluded_original_attempt_allocated_cpu_hours': 599.9213819764555 * 4 / 3600}
+        overlay = {'payloads': payloads, 'launches': launches, 'provenance': provenance,
+                   'output_directory': recovery_directory / 'report'}
+        return overlay, tasks
+
+    def test_recovery_is_separate_provenanced_and_does_not_pool_short_attempt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run, recovery_directory = Path(directory) / 'original', Path(directory) / 'recovery'
+            manifest, endpoints = fixture(run)
+            overlay, recovered_tasks = self.recovery_fixture(run, manifest, recovery_directory)
+            initial = self.report(run, manifest, endpoints)
+            self.assertEqual(initial['complete_tasks'], 18)
+            source_files = {p.relative_to(run): p.read_bytes() for p in run.rglob('*') if p.is_file()}
+            helper = types.SimpleNamespace(load_recovery_overlay=lambda *args: overlay)
+            with patch.dict(sys.modules, {'final_recovery': helper}):
+                result = self.report(run, manifest, endpoints, recovery_directory=recovery_directory)
+            self.assertEqual(result['complete_tasks'], 20)
+            self.assertEqual(result['errors'], [])
+            self.assertEqual(result['recovery']['reused_sequence_count'], 1)
+            self.assertEqual(result['costs']['planned_inference_allocated_cpu_hours'], 20)
+            self.assertAlmostEqual(result['costs']['verified_complete_inference_allocated_cpu_hours'],
+                                   30 * 600.01 * 4 / 3600)
+            self.assertEqual(result['costs']['recovery'], {k: v for k, v in overlay['provenance'].items()
+                                                          if k.endswith('_allocated_cpu_hours')})
+            point = next(p for p in result['timepoints'] if (p['arm'], p['seed'], p['id'], p['budget'])
+                         == ('cp_sat', 1, 'test_001', 600))
+            self.assertEqual(point['contacts'], 0)
+            self.assertTrue(point['complete'])
+            self.assertEqual([r['task'] for r in result['tasks'] if r.get('recovery_overlay')],
+                             [t['task'] for t in recovered_tasks])
+            for path, contents in source_files.items():
+                self.assertEqual((run / path).read_bytes(), contents)
+            output_directory = recovery_directory / 'report'
+            self.assertTrue((output_directory / 'analysis.json').is_file())
+            report = (output_directory / 'report.md').read_text()
+            self.assertIn('Documented CP-SAT recovery', report)
+            self.assertIn('score is never pooled', report)
+            self.assertIn('must not be counted twice', report)
+
+    def test_recovery_still_rejects_short_budget_and_invalid_witness(self):
+        changes = [lambda p: p['results'][1].update(elapsed_s=599.9213819764555, bound_recorded_s=599.92128),
+                   lambda p: p['results'][1].update(best_contacts=1)]
+        for change in changes:
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as directory:
+                run, recovery_directory = Path(directory) / 'original', Path(directory) / 'recovery'
+                manifest, endpoints = fixture(run)
+                overlay, tasks = self.recovery_fixture(run, manifest, recovery_directory)
+                change(overlay['payloads'][tasks[0]['task']])
+                helper = types.SimpleNamespace(load_recovery_overlay=lambda *args: overlay)
+                with patch.dict(sys.modules, {'final_recovery': helper}), self.assertRaises(SystemExit):
+                    self.report(run, manifest, endpoints, recovery_directory=recovery_directory)
+                result = json.loads((recovery_directory / 'report/analysis.json').read_text())
+                self.assertEqual(result['complete_tasks'], 19)
+                self.assertEqual(result['tasks'][tasks[0]['task']]['status'], 'verification_failed')
+                self.assertTrue(result['errors'])
+                self.assertFalse((run / 'analysis.json').exists())
+
+    def test_incomplete_recovery_or_source_report_destination_cannot_write_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run, recovery_directory = Path(directory) / 'original', Path(directory) / 'recovery'
+            manifest, endpoints = fixture(run)
+            overlay, _ = self.recovery_fixture(run, manifest, recovery_directory)
+            def incomplete(*args):
+                raise ValueError('Recovery cells are not all complete')
+            helper = types.SimpleNamespace(load_recovery_overlay=incomplete)
+            with patch.dict(sys.modules, {'final_recovery': helper}), self.assertRaisesRegex(ValueError, 'not all complete'):
+                self.report(run, manifest, endpoints, recovery_directory=recovery_directory)
+            self.assertFalse((recovery_directory / 'report').exists())
+            overlay['output_directory'] = run / 'replacement_report'
+            helper.load_recovery_overlay = lambda *args: overlay
+            with patch.dict(sys.modules, {'final_recovery': helper}), self.assertRaisesRegex(ValueError, 'outside'):
+                self.report(run, manifest, endpoints, recovery_directory=recovery_directory)
+            self.assertFalse((run / 'replacement_report').exists())
 
     def modify(self, run, manifest, callback, arm='grpo', split='test', seed=0):
         task = next(t for t in manifest['evaluation_tasks'] if (t['arm'], t['split'], t['seed']) == (arm, split, seed))

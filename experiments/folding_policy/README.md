@@ -78,6 +78,11 @@ physical training from per-method lineage charges; they do not claim equal-total
 cost superiority over the ten-minute classical runs. The original 24-hour DQN
 experiment remains a separate study.
 
+The recorded CP-SAT seed 4 timing failure has a separate, explicitly frozen
+[13-cell recovery procedure](FINAL_RECOVERY.md). It preserves original files,
+uses the original search settings, and writes merged reports under the recovery
+directory. It is not a generic retry of completed experiments.
+
 ## Previous pilot: learning-rate controls and longer inference
 
 The [fine-tuning follow-up](FINETUNE_FOLLOWUP_PLAN.md) reuses all eighteen saved

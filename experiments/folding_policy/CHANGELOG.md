@@ -1,5 +1,21 @@
 # Experiment work log
 
+## 2026-10-15 — Explicit recovery of the CP-SAT timing failure
+
+The completed final report checked 3,578,331 witness records without verification
+errors and retained 98/100 complete evaluation tasks. CP-SAT seed 4 stopped after
+75 synthetic inputs because `test_075` returned FEASIBLE after 599.921382 seconds,
+slightly before the strict 600-second completion threshold. Public benchmarks
+for that seed had not started.
+
+Add a separate frozen recovery of 13 cells using the original solver worker,
+same seed, resources and budget. Reuse the 75 accepted cells; replace the short
+attempt regardless of score and preserve all original files. The reporter
+requires independently verified complete recovery cells and writes merged
+artifacts under `RECOVERY/report`, with explicit provenance and additional cost.
+No elapsed-time tolerance, result pooling, model changes, automatic retries or
+deadline extensions are introduced. See [FINAL_RECOVERY.md](FINAL_RECOVERY.md).
+
 ## 2026-10-15 — Bound final-report memory and schedule analysis
 
 The final report process was killed after checking 885,786 witness records.
